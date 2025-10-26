@@ -1,0 +1,9 @@
+pub const A: u8 = 0;
+pub const X: u8 = 1;
+pub const L: u8 = 2;
+pub const B: u8 = 3;
+pub const S: u8 = 4;
+pub const T: u8 = 5;
+pub const F: u8 = 6;
+pub const PC: u8 = 8;
+pub const SW: u8 = 9;
