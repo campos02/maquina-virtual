@@ -1,1 +1,10 @@
+pub const ADDR: u8 = 0x90;
 pub const CLEAR: u8 = 0x04;
+pub const COMPR: u8 = 0xA0;
+pub const DIVR: u8 = 0x9C;
+pub const MULR: u8 = 0x98;
+pub const RMO: u8 = 0xAC;
+pub const SHIFTL: u8 = 0xA4;
+pub const SHIFTR: u8 = 0xA8;
+pub const SUBR: u8 = 0x94;
+pub const TIXR: u8 = 0xB8;
