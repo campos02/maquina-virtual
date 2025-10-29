@@ -138,7 +138,75 @@ impl Maquina {
                     self.set_registrador(registrador_destino, *registrador1);
                 }
 
-                // TODO: Restante das instruções de 2 bytes e depois as demais
+                opcodes::SHIFTL => {
+                    let registrador_destino =
+                        palavra.read_u8(4).context("Erro ao ler instrução")?;
+
+                    let registrador1 = self
+                        .registradores
+                        .get(registrador_destino as usize)
+                        .context("Registrador não encontrado")?;
+
+                    let bits = palavra.read_u8(4).context("Erro ao ler instrução")?;
+                    self.set_registrador(registrador_destino, registrador1 << bits);
+                }
+
+                opcodes::SHIFTR => {
+                    let registrador_destino =
+                        palavra.read_u8(4).context("Erro ao ler instrução")?;
+
+                    let registrador1 = self
+                        .registradores
+                        .get(registrador_destino as usize)
+                        .context("Registrador não encontrado")?;
+
+                    let bits = palavra.read_u8(4).context("Erro ao ler instrução")?;
+                    self.set_registrador(registrador_destino, registrador1 >> bits);
+                }
+
+                opcodes::SUBR => {
+                    let registrador1 = palavra.read_u8(4).context("Erro ao ler instrução")?;
+                    let registrador1 = self
+                        .registradores
+                        .get(registrador1 as usize)
+                        .context("Registrador não encontrado")?;
+
+                    let registrador_destino =
+                        palavra.read_u8(4).context("Erro ao ler instrução")?;
+
+                    let registrador2 = self
+                        .registradores
+                        .get(registrador_destino as usize)
+                        .context("Registrador não encontrado")?;
+
+                    self.set_registrador(registrador_destino, registrador1 - registrador2);
+                }
+
+                opcodes::TIXR => {
+                    let x = self.registradores[registradores::X as usize];
+                    self.set_registrador(registradores::X, x + 1);
+
+                    let registrador1 = palavra.read_u8(4).context("Erro ao ler instrução")?;
+                    let registrador1 = self
+                        .registradores
+                        .get(registrador1 as usize)
+                        .context("Registrador não encontrado")?;
+
+                    let sw = self.registradores[registradores::SW as usize];
+                    if x > *registrador1 {
+                        // Setar CC para 01
+                        self.set_registrador(registradores::SW, sw & 0xFDFFFF);
+                        self.set_registrador(registradores::SW, sw | 0x010000);
+                    } else if x < *registrador1 {
+                        // Setar CC para 11 (-1)
+                        self.set_registrador(registradores::SW, sw | 0x030000);
+                    } else {
+                        // Setar CC para 00
+                        self.set_registrador(registradores::SW, sw & 0xFCFFFF);
+                    }
+                }
+
+                // TODO: Instruções de 3 ou 4 bytes
                 _ => (),
             }
         }
