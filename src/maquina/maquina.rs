@@ -75,17 +75,17 @@ impl Maquina {
                         .get(registrador2 as usize)
                         .context("Registrador não encontrado")?;
 
-                    let sw = self.registradores[9];
+                    let sw = self.registradores[registradores::SW as usize];
                     if registrador1 > registrador2 {
                         // Setar CC para 01
-                        self.set_registrador(9, sw & 0xFDFFFF);
-                        self.set_registrador(9, sw | 0x010000);
+                        self.set_registrador(registradores::SW, sw & 0xFDFFFF);
+                        self.set_registrador(registradores::SW, sw | 0x010000);
                     } else if registrador1 < registrador2 {
                         // Setar CC para 11 (-1)
-                        self.set_registrador(9, sw | 0x030000);
+                        self.set_registrador(registradores::SW, sw | 0x030000);
                     } else {
                         // Setar CC para 00
-                        self.set_registrador(9, sw & 0xFCFFFF);
+                        self.set_registrador(registradores::SW, sw & 0xFCFFFF);
                     }
                 }
 
