@@ -21,19 +21,12 @@ impl Maquina {
 
     fn set_registrador(&mut self, numero: usize, valor: u64) {
         if let Some(registrador) = self.registradores.get_mut(numero) {
-            *registrador = valor;
-
-            // Garantir que registradores sem ser o F não passarão de 24 bits
-            if numero != registradores::F && *registrador > 0xFFFFFF {
-                while *registrador > 0xFFFFFF {
-                    *registrador -= 0x1000000;
-                }
-            }
-
-            // Garantir que o registrador F não passará de 48 bits
-            if numero == registradores::F && *registrador > 0xFFFFFFFFFFFF {
-                *registrador -= 0x1000000000000;
-            }
+            // Garantir que o F não passará de 48 bits e os outros não passarão de 24 bits
+            *registrador = if numero == registradores::F {
+                valor % 0x1000000000000
+            } else {
+                valor % 0x1000000
+            };
         }
     }
 
