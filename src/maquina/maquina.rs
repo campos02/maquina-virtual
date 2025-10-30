@@ -53,8 +53,8 @@ impl Maquina {
                 }
 
                 opcodes::CLEAR => {
-                    let registrador = palavra.read_u8(4).context("Erro ao ler instrução")?;
-                    self.set_registrador(registrador as usize, 0);
+                    let registrador1 = palavra.read_u8(4).context("Erro ao ler instrução")?;
+                    self.set_registrador(registrador1 as usize, 0);
                 }
 
                 opcodes::COMPR => {
@@ -205,63 +205,41 @@ impl Maquina {
                     // Últimos 2 bits
                     let modo_enderecamento = opcode & 0x03;
                     let flags = palavra
-                        .read_u8(4)
+                        .read_u8(if modo_enderecamento == 0 { 1 } else { 4 })
                         .context("Erro ao ler flags da instrução")?;
 
                     // Primeiros 6 bits
                     let opcode = opcode & 0xFC;
                     let valor = match modo_enderecamento {
                         // Direto formato SIC, verificar somente flag x
-                        0 => match flags & 8 {
-                            0 => {
-                                let endereco_base = palavra
-                                    .read_u64(12)
-                                    .context("Erro ao ler valor da instrução")?;
+                        0 => {
+                            let endereco = palavra
+                                .read_u64(15)
+                                .context("Erro ao ler valor da instrução")?;
 
-                                let byte1 = *self
-                                    .memoria
-                                    .get(endereco_base as usize)
-                                    .context("Endereço de memória inválido")?;
+                            let endereco_dado = if flags == 0 {
+                                endereco
+                            } else {
+                                self.registradores[registradores::X] + endereco
+                            };
 
-                                let byte2 = *self
-                                    .memoria
-                                    .get(endereco_base as usize + 1)
-                                    .context("Endereço de memória inválido")?;
+                            let byte1 = *self
+                                .memoria
+                                .get(endereco_dado as usize)
+                                .context("Endereço de memória inválido")?;
 
-                                let byte3 = *self
-                                    .memoria
-                                    .get(endereco_base as usize + 2)
-                                    .context("Endereço de memória inválido")?;
+                            let byte2 = *self
+                                .memoria
+                                .get(endereco_dado as usize + 1)
+                                .context("Endereço de memória inválido")?;
 
-                                u64::from_be_bytes([0, 0, 0, 0, 0, byte1, byte2, byte3])
-                            }
+                            let byte3 = *self
+                                .memoria
+                                .get(endereco_dado as usize + 2)
+                                .context("Endereço de memória inválido")?;
 
-                            8 => {
-                                let endereco = palavra
-                                    .read_u64(12)
-                                    .context("Erro ao ler valor da instrução")?;
-
-                                let endereco_base = self.registradores[registradores::X] + endereco;
-                                let byte1 = *self
-                                    .memoria
-                                    .get(endereco_base as usize)
-                                    .context("Endereço de memória inválido")?;
-
-                                let byte2 = *self
-                                    .memoria
-                                    .get(endereco_base as usize + 1)
-                                    .context("Endereço de memória inválido")?;
-
-                                let byte3 = *self
-                                    .memoria
-                                    .get(endereco_base as usize + 2)
-                                    .context("Endereço de memória inválido")?;
-
-                                u64::from_be_bytes([0, 0, 0, 0, 0, byte1, byte2, byte3])
-                            }
-
-                            _ => return Err(anyhow!("Modo de endereçamento inválido")),
-                        },
+                            u64::from_be_bytes([0, 0, 0, 0, 0, byte1, byte2, byte3])
+                        }
 
                         // Imediato
                         1 => match flags {
@@ -274,19 +252,19 @@ impl Maquina {
                                 .context("Erro ao ler valor da instrução")?,
 
                             2 => {
-                                let endereco = palavra
+                                let valor = palavra
                                     .read_u64(12)
                                     .context("Erro ao ler valor da instrução")?;
 
-                                self.registradores[registradores::PC] + endereco
+                                self.registradores[registradores::PC] + valor
                             }
 
                             4 => {
-                                let endereco = palavra
+                                let valor = palavra
                                     .read_u64(12)
                                     .context("Erro ao ler valor da instrução")?;
 
-                                self.registradores[registradores::B] + endereco
+                                self.registradores[registradores::B] + valor
                             }
 
                             _ => return Err(anyhow!("Modo de endereçamento inválido")),
