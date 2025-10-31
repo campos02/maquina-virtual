@@ -22,6 +22,8 @@ pub fn decodificar_instrucao(
     };
 
     let mut instrucao = BitReader::new(proximas);
+    let mut tamanho_instrucao = 2;
+
     if let Ok(opcode) = instrucao.read_u8(8) {
         match opcode {
             opcodes::ADDR => {
@@ -221,24 +223,32 @@ pub fn decodificar_instrucao(
                             .get(endereco as usize + 2)
                             .context("Endereço de memória inválido")?;
 
+                        tamanho_instrucao = 3;
                         u64::from_be_bytes([0, 0, 0, 0, 0, byte1, byte2, byte3])
                     }
 
                     // Imediato
                     1 => match flags {
-                        0 => instrucao
-                            .read_u64(12)
-                            .context("Erro ao ler valor da instrução")?,
+                        0 => {
+                            tamanho_instrucao = 3;
+                            instrucao
+                                .read_u64(12)
+                                .context("Erro ao ler valor da instrução")?
+                        }
 
-                        1 => instrucao
-                            .read_u64(20)
-                            .context("Erro ao ler valor da instrução")?,
+                        1 => {
+                            tamanho_instrucao = 4;
+                            instrucao
+                                .read_u64(20)
+                                .context("Erro ao ler valor da instrução")?
+                        }
 
                         2 => {
                             let valor = instrucao
                                 .read_u64(12)
                                 .context("Erro ao ler valor da instrução")?;
 
+                            tamanho_instrucao = 3;
                             registradores[registradores::PC] + valor
                         }
 
@@ -247,6 +257,7 @@ pub fn decodificar_instrucao(
                                 .read_u64(12)
                                 .context("Erro ao ler valor da instrução")?;
 
+                            tamanho_instrucao = 3;
                             registradores[registradores::B] + valor
                         }
 
@@ -256,19 +267,26 @@ pub fn decodificar_instrucao(
                     // Indireto
                     2 => {
                         let endereco_indireto = match flags {
-                            0 => instrucao
-                                .read_u64(12)
-                                .context("Erro ao ler endereço da instrução")?,
+                            0 => {
+                                tamanho_instrucao = 3;
+                                instrucao
+                                    .read_u64(12)
+                                    .context("Erro ao ler endereço da instrução")?
+                            }
 
-                            1 => instrucao
-                                .read_u64(20)
-                                .context("Erro ao ler endereço da instrução")?,
+                            1 => {
+                                tamanho_instrucao = 4;
+                                instrucao
+                                    .read_u64(20)
+                                    .context("Erro ao ler endereço da instrução")?
+                            }
 
                             2 => {
                                 let endereco = instrucao
                                     .read_u64(12)
                                     .context("Erro ao ler endereço da instrução")?;
 
+                                tamanho_instrucao = 3;
                                 registradores[registradores::PC] + endereco
                             }
 
@@ -277,6 +295,7 @@ pub fn decodificar_instrucao(
                                     .read_u64(12)
                                     .context("Erro ao ler endereço da instrução")?;
 
+                                tamanho_instrucao = 3;
                                 registradores[registradores::B] + endereco
                             }
 
@@ -316,19 +335,26 @@ pub fn decodificar_instrucao(
                     // Direto
                     3 => {
                         let endereco = match flags {
-                            0 => instrucao
-                                .read_u64(12)
-                                .context("Erro ao ler endereço da instrução")?,
+                            0 => {
+                                tamanho_instrucao = 3;
+                                instrucao
+                                    .read_u64(12)
+                                    .context("Erro ao ler endereço da instrução")?
+                            }
 
-                            1 => instrucao
-                                .read_u64(20)
-                                .context("Erro ao ler endereço da instrução")?,
+                            1 => {
+                                tamanho_instrucao = 4;
+                                instrucao
+                                    .read_u64(20)
+                                    .context("Erro ao ler endereço da instrução")?
+                            }
 
                             2 => {
                                 let endereco = instrucao
                                     .read_u64(12)
                                     .context("Erro ao ler endereço da instrução")?;
 
+                                tamanho_instrucao = 3;
                                 registradores[registradores::PC] + endereco
                             }
 
@@ -337,6 +363,7 @@ pub fn decodificar_instrucao(
                                     .read_u64(12)
                                     .context("Erro ao ler endereço da instrução")?;
 
+                                tamanho_instrucao = 3;
                                 registradores[registradores::B] + endereco
                             }
 
@@ -345,6 +372,7 @@ pub fn decodificar_instrucao(
                                     .read_u64(12)
                                     .context("Erro ao ler endereço da instrução")?;
 
+                                tamanho_instrucao = 3;
                                 registradores[registradores::X] + endereco
                             }
 
@@ -353,6 +381,7 @@ pub fn decodificar_instrucao(
                                     .read_u64(20)
                                     .context("Erro ao ler endereço da instrução")?;
 
+                                tamanho_instrucao = 4;
                                 registradores[registradores::X] + endereco
                             }
 
@@ -361,6 +390,7 @@ pub fn decodificar_instrucao(
                                     .read_u64(12)
                                     .context("Erro ao ler endereço da instrução")?;
 
+                                tamanho_instrucao = 3;
                                 registradores[registradores::PC]
                                     + registradores[registradores::X]
                                     + endereco
@@ -371,6 +401,7 @@ pub fn decodificar_instrucao(
                                     .read_u64(12)
                                     .context("Erro ao ler endereço da instrução")?;
 
+                                tamanho_instrucao = 3;
                                 registradores[registradores::B]
                                     + registradores[registradores::X]
                                     + endereco
@@ -404,11 +435,17 @@ pub fn decodificar_instrucao(
                         registradores[registradores::A] + valor,
                     ),
 
-                    _ => (),
+                    _ => return Err(anyhow!("Instrução inválida")),
                 }
             }
         }
     }
+
+    set_registrador(
+        registradores,
+        registradores::PC,
+        registradores[registradores::PC] + tamanho_instrucao,
+    );
 
     Ok(())
 }
