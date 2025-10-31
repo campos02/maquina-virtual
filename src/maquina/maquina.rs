@@ -70,7 +70,7 @@ impl Maquina {
                         .get(registrador2 as usize)
                         .context("Registrador não encontrado")?;
 
-                    let sw = self.registradores[registradores::SW as usize];
+                    let sw = self.registradores[registradores::SW];
                     if registrador1 > registrador2 {
                         // Setar CC para 01
                         self.set_registrador(registradores::SW, sw & 0xFDFFFF);
@@ -127,10 +127,9 @@ impl Maquina {
                         .get(registrador1 as usize)
                         .context("Registrador não encontrado")?;
 
-                    let registrador_destino =
-                        palavra.read_u8(4).context("Erro ao ler instrução")?;
+                    let registrador2 = palavra.read_u8(4).context("Erro ao ler instrução")?;
 
-                    self.set_registrador(registrador_destino as usize, *registrador1);
+                    self.set_registrador(registrador2 as usize, *registrador1);
                 }
 
                 opcodes::SHIFTL => {
@@ -217,7 +216,7 @@ impl Maquina {
                                 .read_u64(15)
                                 .context("Erro ao ler valor da instrução")?;
 
-                            let endereco_dado = if flags == 0 {
+                            let endereco = if flags == 0 {
                                 endereco
                             } else {
                                 self.registradores[registradores::X] + endereco
@@ -225,17 +224,17 @@ impl Maquina {
 
                             let byte1 = *self
                                 .memoria
-                                .get(endereco_dado as usize)
+                                .get(endereco as usize)
                                 .context("Endereço de memória inválido")?;
 
                             let byte2 = *self
                                 .memoria
-                                .get(endereco_dado as usize + 1)
+                                .get(endereco as usize + 1)
                                 .context("Endereço de memória inválido")?;
 
                             let byte3 = *self
                                 .memoria
-                                .get(endereco_dado as usize + 2)
+                                .get(endereco as usize + 2)
                                 .context("Endereço de memória inválido")?;
 
                             u64::from_be_bytes([0, 0, 0, 0, 0, byte1, byte2, byte3])
@@ -270,7 +269,156 @@ impl Maquina {
                             _ => return Err(anyhow!("Modo de endereçamento inválido")),
                         },
 
-                        // TODO: Direto e indireto
+                        // Indireto
+                        2 => {
+                            let endereco_indireto = match flags {
+                                0 => palavra
+                                    .read_u64(12)
+                                    .context("Erro ao ler endereço da instrução")?,
+
+                                1 => palavra
+                                    .read_u64(20)
+                                    .context("Erro ao ler endereço da instrução")?,
+
+                                2 => {
+                                    let endereco = palavra
+                                        .read_u64(12)
+                                        .context("Erro ao ler endereço da instrução")?;
+
+                                    self.registradores[registradores::PC] + endereco
+                                }
+
+                                4 => {
+                                    let endereco = palavra
+                                        .read_u64(12)
+                                        .context("Erro ao ler endereço da instrução")?;
+
+                                    self.registradores[registradores::B] + endereco
+                                }
+
+                                _ => return Err(anyhow!("Modo de endereçamento inválido")),
+                            };
+
+                            let byte1 = *self
+                                .memoria
+                                .get(endereco_indireto as usize)
+                                .context("Endereço de memória inválido")?;
+
+                            let byte2 = *self
+                                .memoria
+                                .get(endereco_indireto as usize + 1)
+                                .context("Endereço de memória inválido")?;
+
+                            let byte3 = *self
+                                .memoria
+                                .get(endereco_indireto as usize + 2)
+                                .context("Endereço de memória inválido")?;
+
+                            let endereco_dado =
+                                u64::from_be_bytes([0, 0, 0, 0, 0, byte1, byte2, byte3]);
+
+                            let byte1 = *self
+                                .memoria
+                                .get(endereco_dado as usize)
+                                .context("Endereço de memória inválido")?;
+
+                            let byte2 = *self
+                                .memoria
+                                .get(endereco_dado as usize + 1)
+                                .context("Endereço de memória inválido")?;
+
+                            let byte3 = *self
+                                .memoria
+                                .get(endereco_dado as usize + 2)
+                                .context("Endereço de memória inválido")?;
+
+                            u64::from_be_bytes([0, 0, 0, 0, 0, byte1, byte2, byte3])
+                        }
+
+                        // Direto
+                        3 => {
+                            let endereco = match flags {
+                                0 => palavra
+                                    .read_u64(12)
+                                    .context("Erro ao ler endereço da instrução")?,
+
+                                1 => palavra
+                                    .read_u64(20)
+                                    .context("Erro ao ler endereço da instrução")?,
+
+                                2 => {
+                                    let endereco = palavra
+                                        .read_u64(12)
+                                        .context("Erro ao ler endereço da instrução")?;
+
+                                    self.registradores[registradores::PC] + endereco
+                                }
+
+                                4 => {
+                                    let endereco = palavra
+                                        .read_u64(12)
+                                        .context("Erro ao ler endereço da instrução")?;
+
+                                    self.registradores[registradores::B] + endereco
+                                }
+
+                                8 => {
+                                    let endereco = palavra
+                                        .read_u64(12)
+                                        .context("Erro ao ler endereço da instrução")?;
+
+                                    self.registradores[registradores::X] + endereco
+                                }
+
+                                9 => {
+                                    let endereco = palavra
+                                        .read_u64(20)
+                                        .context("Erro ao ler endereço da instrução")?;
+
+                                    self.registradores[registradores::X] + endereco
+                                }
+
+                                10 => {
+                                    let endereco = palavra
+                                        .read_u64(12)
+                                        .context("Erro ao ler endereço da instrução")?;
+
+                                    self.registradores[registradores::PC]
+                                        + self.registradores[registradores::X]
+                                        + endereco
+                                }
+
+                                12 => {
+                                    let endereco = palavra
+                                        .read_u64(12)
+                                        .context("Erro ao ler endereço da instrução")?;
+
+                                    self.registradores[registradores::B]
+                                        + self.registradores[registradores::X]
+                                        + endereco
+                                }
+
+                                _ => return Err(anyhow!("Modo de endereçamento inválido")),
+                            };
+
+                            let byte1 = *self
+                                .memoria
+                                .get(endereco as usize)
+                                .context("Endereço de memória inválido")?;
+
+                            let byte2 = *self
+                                .memoria
+                                .get(endereco as usize + 1)
+                                .context("Endereço de memória inválido")?;
+
+                            let byte3 = *self
+                                .memoria
+                                .get(endereco as usize + 2)
+                                .context("Endereço de memória inválido")?;
+
+                            u64::from_be_bytes([0, 0, 0, 0, 0, byte1, byte2, byte3])
+                        }
+
                         _ => return Err(anyhow!("Modo de endereçamento inválido")),
                     };
 
@@ -280,7 +428,6 @@ impl Maquina {
                             self.registradores[registradores::A] + valor,
                         ),
 
-                        // TODO: Instruções restantes
                         _ => (),
                     }
                 }
