@@ -13,6 +13,10 @@ impl Maquina {
         }
     }
 
+    pub fn registrador(&self, numero: usize) -> Option<u64> {
+        self.registradores.get(numero).copied()
+    }
+
     pub fn ler_instrucao(&mut self) -> anyhow::Result<()> {
         executor::decodificar_instrucao(&mut self.registradores, &mut self.memoria)
     }
