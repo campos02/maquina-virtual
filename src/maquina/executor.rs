@@ -67,7 +67,7 @@ pub fn decodificar_instrucao(
                     set_registrador(registradores, registradores::SW, sw | 0x010000);
                 } else if registrador1 < registrador2 {
                     // Setar CC para 11 (-1)
-                    set_registrador(registradores, registradores::SW, sw | 0x030000);
+                    set_registrador(registradores, registradores::SW, sw | 0x018000);
                 } else {
                     // Setar CC para 00
                     set_registrador(registradores, registradores::SW, sw & 0xFCFFFF);
@@ -182,87 +182,10 @@ pub fn decodificar_instrucao(
                     set_registrador(registradores, registradores::SW, sw | 0x010000);
                 } else if x < *registrador1 {
                     // Setar CC para 11 (-1)
-                    set_registrador(registradores, registradores::SW, sw | 0x030000);
+                    set_registrador(registradores, registradores::SW, sw | 0x018000);
                 } else {
                     // Setar CC para 00
                     set_registrador(registradores, registradores::SW, sw & 0xFCFFFF);
-                }
-            }
-
-            opcodes::ANDR => {
-                let registrador1 = instrucao.read_u8(4).context("Erro ao ler instrução")?;
-                let registrador1_val = registradores
-                    .get(registrador1 as usize)
-                    .context("Registrador de origem não encontrado")?;
-
-                let registrador_destino = instrucao.read_u8(4).context("Erro ao ler instrução")?;
-                let registrador2_val = registradores
-                    .get(registrador_destino as usize)
-                    .context("Registrador destino não encontrado")?;
-
-                set_registrador(
-                    registradores,
-                    registrador_destino as usize,
-                    registrador1_val & registrador2_val,
-                );
-            }
-
-            opcodes::ORR => {
-                let registrador1 = instrucao.read_u8(4).context("Erro ao ler instrução")?;
-                let registrador1_val = registradores
-                    .get(registrador1 as usize)
-                    .context("Registrador de origem não encontrado")?;
-
-                let registrador_destino = instrucao.read_u8(4).context("Erro ao ler instrução")?;
-                let registrador2_val = registradores
-                    .get(registrador_destino as usize)
-                    .context("Registrador destino não encontrado")?;
-
-                set_registrador(
-                    registradores,
-                    registrador_destino as usize,
-                    registrador1_val | registrador2_val,
-                );
-            }
-
-            opcodes::RSUB => {
-                let pc_val = registradores[registradores::L];
-                set_registrador(registradores, registradores::PC, pc_val);
-                return Ok(());
-            }
-
-            opcodes::J => {
-                let endereco = instrucao
-                    .read_u64(12)
-                    .context("Erro ao ler endereço da instrução para J")?;
-
-                set_registrador(registradores, registradores::PC, endereco);
-                return Ok(());
-            }
-
-            opcodes::JEQ => {
-                let endereco = instrucao
-                    .read_u64(12)
-                    .context("Erro ao ler endereço da instrução para JEQ")?;
-
-                let cc = registradores[registradores::SW] & 0x030000;
-
-                if cc == 0x00 {
-                    set_registrador(registradores, registradores::PC, endereco);
-                    return Ok(());
-                }
-            }
-
-            opcodes::JGT => {
-                let endereco = instrucao
-                    .read_u64(12)
-                    .context("Erro ao ler endereço da instrução para JGT")?;
-
-                let cc = registradores[registradores::SW] & 0x030000;
-
-                if cc == 0x010000 {
-                    set_registrador(registradores, registradores::PC, endereco);
-                    return Ok(());
                 }
             }
 
@@ -511,6 +434,40 @@ pub fn decodificar_instrucao(
                         registradores::A,
                         registradores[registradores::A] + valor,
                     ),
+
+                    opcodes::AND => set_registrador(
+                        registradores,
+                        registradores::A,
+                        registradores[registradores::A] & valor,
+                    ),
+
+                    opcodes::OR => set_registrador(
+                        registradores,
+                        registradores::A,
+                        registradores[registradores::A] | valor,
+                    ),
+
+                    opcodes::RSUB => set_registrador(
+                        registradores,
+                        registradores::PC,
+                        registradores[registradores::L],
+                    ),
+
+                    opcodes::J => set_registrador(registradores, registradores::PC, valor),
+
+                    opcodes::JEQ => {
+                        let cc = registradores[registradores::SW] & 0x018000;
+                        if cc == 0 {
+                            set_registrador(registradores, registradores::PC, valor);
+                        }
+                    }
+
+                    opcodes::JGT => {
+                        let cc = registradores[registradores::SW] & 0x018000;
+                        if cc == 0x010000 {
+                            set_registrador(registradores, registradores::PC, valor);
+                        }
+                    }
 
                     _ => return Err(anyhow!("Instrução inválida")),
                 }
