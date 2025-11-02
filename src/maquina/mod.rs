@@ -1,4 +1,3 @@
-mod constantes;
-mod executor;
-#[allow(clippy::module_inception)]
+pub mod constantes;
+pub mod executor;
 pub mod maquina;
