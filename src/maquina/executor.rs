@@ -4,7 +4,7 @@ use bitreader::BitReader;
 
 /// Seta o valor de um registrador.
 /// Necessário usar esta função para eles terem o tamanho correto.
-pub fn set_registrador(registradores: &mut [u64; 10], numero: usize, valor: u64) {
+pub fn set_registrador(registradores: &mut [u64], numero: usize, valor: u64) {
     if let Some(registrador) = registradores.get_mut(numero) {
         // Garantir que o F não passará de 48 bits e os outros não passarão de 24 bits
         *registrador = if numero == registradores::F {
@@ -16,10 +16,7 @@ pub fn set_registrador(registradores: &mut [u64; 10], numero: usize, valor: u64)
 }
 
 /// Lê da memória, decodifica e executa uma instrução.
-pub fn executar_instrucao(
-    registradores: &mut [u64; 10],
-    memoria: &mut [u8; 32768],
-) -> anyhow::Result<()> {
+pub fn executar_instrucao(registradores: &mut [u64], memoria: &mut [u8]) -> anyhow::Result<()> {
     let Some(proximas) = memoria.get(registradores[registradores::PC] as usize..) else {
         return Err(anyhow!("PC não aponta para um endereço válido"));
     };
@@ -480,7 +477,12 @@ pub fn executar_instrucao(
                     }
 
                     opcodes::JSUB => {
-                        set_registrador(registradores, registradores::L, registradores[registradores::PC]);
+                        set_registrador(
+                            registradores,
+                            registradores::L,
+                            registradores[registradores::PC],
+                        );
+
                         set_registrador(registradores, registradores::PC, valor);
                     }
 

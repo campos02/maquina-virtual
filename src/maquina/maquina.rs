@@ -32,6 +32,11 @@ impl Maquina {
         self.registradores.get(numero).copied()
     }
 
+    /// Retorna um slice da memória.
+    pub fn memoria(&self) -> &[u8] {
+        &self.memoria
+    }
+
     /// Lê da memória, decodifica e executa uma instrução.
     pub fn executar_instrucao(&mut self) -> anyhow::Result<()> {
         executor::executar_instrucao(&mut self.registradores, &mut self.memoria)
