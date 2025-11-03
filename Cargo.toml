@@ -6,7 +6,4 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.75"
 bitreader = "0.3.7"
-eframe = { version = "0.22.0", features = ["default"] }
-egui = "0.22.0"
-egui_extras = "0.22.0"
-winapi = { version = "0.3.9", features = ["winuser", "windef"] }
+eframe = "0.33.0"

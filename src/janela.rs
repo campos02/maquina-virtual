@@ -8,15 +8,13 @@ pub struct Janela {
 impl eframe::App for Janela {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            // Área principal (fora da sidebar) cuidado com o espaço horizontal para a sidebar n comer a area
+            // Área principal (fora da sidebar). Cuidado com o espaço horizontal para a sidebar não comer a area
             ui.heading("Área principal");
             ui.separator();
-            ui.horizontal(|ui|{
+            ui.horizontal(|ui| {
                 ui.add_space(200.0);
                 ui.label("janela pra tralhas.");
-            
             })
-            
         });
 
         // barra lateral
@@ -26,16 +24,14 @@ impl eframe::App for Janela {
             .show(ctx, |ui| {
                 ui.heading("");
                 ui.separator();
-                
+
                 // espaçamento
                 ui.add_space(20.0);
-                
+
                 // The button
                 if ui.button("Traduções").clicked() {
                     //implementar tabela de traduções
-
                 }
-                
             });
     }
 }
