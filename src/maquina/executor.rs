@@ -472,6 +472,36 @@ pub fn executar_instrucao(
                         }
                     }
 
+                    opcodes::JLT => {
+                        let cc = registradores[registradores::SW] & 0x018000;
+                        if cc == 0x018000 {
+                            set_registrador(registradores, registradores::PC, valor);
+                        }
+                    }
+
+                    opcodes::JSUB => {
+                        set_registrador(registradores, registradores::L, registradores[registradores::PC]);
+                        set_registrador(registradores, registradores::PC, valor);
+                    }
+
+                    opcodes::TIX => {
+                        let x = registradores[registradores::X];
+                        set_registrador(registradores, registradores::X, x + 1);
+
+                        let sw = registradores[registradores::SW];
+                        if x > valor {
+                            // Setar CC para 01
+                            set_registrador(registradores, registradores::SW, sw & 0xFDFFFF);
+                            set_registrador(registradores, registradores::SW, sw | 0x010000);
+                        } else if x < valor {
+                            // Setar CC para 11 (-1)
+                            set_registrador(registradores, registradores::SW, sw | 0x018000);
+                        } else {
+                            // Setar CC para 00
+                            set_registrador(registradores, registradores::SW, sw & 0xFCFFFF);
+                        }
+                    }
+
                     _ => return Err(anyhow!("Instrução inválida")),
                 }
             }

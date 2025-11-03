@@ -15,3 +15,6 @@ pub const RSUB: u8 = 0x4C;
 pub const J: u8 = 0x3C;
 pub const JEQ: u8 = 0x30;
 pub const JGT: u8 = 0x34;
+pub const JLT: u8 = 0x38;
+pub const JSUB: u8 = 0x48;
+pub const TIX: u8 = 0x2C;
