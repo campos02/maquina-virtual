@@ -2,7 +2,7 @@ use crate::maquina::constantes::{opcodes, registradores};
 use anyhow::{Context, anyhow};
 use bitreader::BitReader;
 
-fn set_registrador(registradores: &mut [u64; 10], numero: usize, valor: u64) {
+pub fn set_registrador(registradores: &mut [u64; 10], numero: usize, valor: u64) {
     if let Some(registrador) = registradores.get_mut(numero) {
         // Garantir que o F não passará de 48 bits e os outros não passarão de 24 bits
         *registrador = if numero == registradores::F {

@@ -1,3 +1,4 @@
+use crate::maquina::constantes::registradores;
 use crate::maquina::executor;
 use anyhow::Context;
 
@@ -16,10 +17,11 @@ impl Maquina {
 
     pub fn carregar(&mut self, programa: &[u8]) -> anyhow::Result<()> {
         self.memoria
-            .get_mut(0x6000..programa.len())
+            .get_mut(0x6000..0x6000 + programa.len())
             .context("Programa possui tamanho maior que o possível de carregar")?
             .copy_from_slice(programa);
 
+        executor::set_registrador(&mut self.registradores, registradores::PC, 0x6000);
         Ok(())
     }
 
