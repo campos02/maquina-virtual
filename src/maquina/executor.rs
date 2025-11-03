@@ -2,6 +2,8 @@ use crate::maquina::constantes::{opcodes, registradores};
 use anyhow::{Context, anyhow};
 use bitreader::BitReader;
 
+/// Seta o valor de um registrador.
+/// Necessário usar esta função para eles terem o tamanho correto.
 pub fn set_registrador(registradores: &mut [u64; 10], numero: usize, valor: u64) {
     if let Some(registrador) = registradores.get_mut(numero) {
         // Garantir que o F não passará de 48 bits e os outros não passarão de 24 bits
@@ -13,6 +15,7 @@ pub fn set_registrador(registradores: &mut [u64; 10], numero: usize, valor: u64)
     }
 }
 
+/// Lê da memória, decodifica e executa uma instrução.
 pub fn executar_instrucao(
     registradores: &mut [u64; 10],
     memoria: &mut [u8; 32768],
