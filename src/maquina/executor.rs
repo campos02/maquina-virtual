@@ -13,7 +13,7 @@ fn set_registrador(registradores: &mut [u64; 10], numero: usize, valor: u64) {
     }
 }
 
-pub fn decodificar_instrucao(
+pub fn executar_instrucao(
     registradores: &mut [u64; 10],
     memoria: &mut [u8; 32768],
 ) -> anyhow::Result<()> {
