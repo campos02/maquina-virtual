@@ -1,8 +1,8 @@
-mod janela;
+mod gui;
 mod maquina;
 
 use eframe::egui;
-use janela::Janela;
+use gui::janela::Janela;
 
 fn main() -> Result<(), eframe::Error> {
     let mut options = eframe::NativeOptions::default();
@@ -13,6 +13,12 @@ fn main() -> Result<(), eframe::Error> {
     eframe::run_native(
         "Máquina Virtual",
         options,
-        Box::new(|_cc| Ok(Box::<Janela>::default())),
+        Box::new(|cc| {
+            cc.egui_ctx.style_mut(|style| {
+                style.spacing.button_padding = egui::vec2(5.0, 5.0);
+            });
+
+            Ok(Box::<Janela>::default())
+        }),
     )
 }
