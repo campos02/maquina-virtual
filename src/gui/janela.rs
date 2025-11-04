@@ -18,61 +18,88 @@ impl Default for Janela {
 
 impl eframe::App for Janela {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // Barra lateral
-        egui::SidePanel::left("sidebar")
-            .resizable(false)
-            .default_width(200.0)
-            .show(ctx, |ui| {
-                ui.add_space(5.0);
-                ui.heading("Registradores");
-                ui.add_space(1.0);
+        // TOPO (Menu de controle)
+        egui::TopBottomPanel::top("barra_superior").show(ctx, |ui| {
+            ui.horizontal_centered(|ui| {
+                ui.heading("🧠 Máquina Virtual SIC/XE");
+
                 ui.separator();
-            });
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            // Área principal (fora da sidebar). Cuidado com o espaço horizontal para a sidebar não comer a área
-            ui.heading("Área principal");
-            ui.separator();
-
-            if ui.button("Carregar programa (hex)").clicked() {
-                if let Err(error) = carregar_programa(&mut self.maquina) {
-                    self.erro = Some(error.to_string());
+                if ui.button("📂 Carregar programa").clicked() {
+                    if let Err(error) = carregar_programa(&mut self.maquina) {
+                        self.erro = Some(error.to_string());
+                    } else {
+                        self.erro = Some("Programa carregado com sucesso.".to_string());
+                    }
                 }
-            }
+
+                if ui.button("▶️ Executar").clicked() {
+                    if let Err(error) = self.maquina.executar_instrucao() {
+                        self.erro = Some(error.to_string());
+                    }
+                }
+
+                if ui.button("⏭️ Passo").clicked() {
+                    if let Err(error) = self.maquina.executar_instrucao() {
+                        self.erro = Some(error.to_string());
+                    }
+                }
+
+                if ui.button("🔁 Reset").clicked() {
+                    self.maquina = Maquina::new();
+                    self.erro = None;
+                }
+            });
         });
 
-        // Janela de erro
-        if self.erro.is_some() {
-            ctx.show_viewport_immediate(
-                egui::ViewportId::from_hash_of("erro"),
-                egui::ViewportBuilder::default()
-                    .with_title("Erro")
-                    .with_inner_size([300., 100.])
-                    .with_maximize_button(false)
-                    .with_minimize_button(false)
-                    .with_resizable(false),
-                |ctx, _| {
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
-                    egui::CentralPanel::default().show(ctx, |ui| {
-                        ui.add_space(ui.available_height() / 8.0);
-                        ui.vertical_centered(|ui| {
-                            ui.style_mut()
-                                .text_styles
-                                .insert(egui::TextStyle::Body, egui::FontId::proportional(14.));
+        // PAINEL ESQUERDO (Registradores)
+        egui::SidePanel::left("painel_registradores")
+            .resizable(true)
+            .default_width(200.0)
+            .show(ctx, |ui| {
+                ui.heading("📘 Registradores");
+                ui.separator();
 
-                            ui.label(self.erro.as_ref().unwrap_or(&"".to_string()));
-                            ui.add_space(5.0);
-                            if ui.button("Ok").clicked() {
-                                self.erro = None;
-                            }
-                        });
-                    });
-
-                    if ctx.input(|i| i.viewport().close_requested()) {
-                        self.erro = None;
+                egui::Grid::new("grid_regs").striped(true).show(ui, |ui| {
+                    let nomes = ["A", "X", "L", "PC", "SW", "B", "S", "T", "F", "R9"];
+                    for (i, nome) in nomes.iter().enumerate() {
+                        ui.label(*nome);
+                        ui.label(format!("{:06X}", self.maquina.registrador(i).unwrap_or(0)));
+                        ui.end_row();
                     }
-                },
-            );
-        }
+                });
+            });
+        // PAINEL CENTRAL (Memória + Código)
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.heading("💾 Memória e Código");
+            ui.separator();
+
+            let memoria = self.maquina.memoria();
+
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                for addr in (0x6000..0x6020).step_by(8) {
+                    let slice = &memoria[addr..addr + 8];
+                    ui.monospace(format!(
+                        "{:04X}: {:02X} {:02X} {:02X} {:02X}  {:02X} {:02X} {:02X} {:02X}",
+                        addr,
+                        slice[0], slice[1], slice[2], slice[3],
+                        slice[4], slice[5], slice[6], slice[7]
+                    ));
+                }
+            });
+        });
+        // RODAPÉ (Mensagens)
+        egui::TopBottomPanel::bottom("painel_erros")
+            .resizable(false)
+            .default_height(35.0)
+            .show(ctx, |ui| {
+                ui.horizontal_centered(|ui| {
+                    if let Some(erro) = &self.erro {
+                        ui.colored_label(egui::Color32::LIGHT_RED, erro);
+                    } else {
+                        ui.label("✅ Sistema pronto.");
+                    }
+                });
+            });
     }
 }

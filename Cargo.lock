@@ -1714,6 +1714,7 @@ dependencies = [
  "anyhow",
  "bitreader",
  "eframe",
+ "egui",
  "rfd",
 ]
 
