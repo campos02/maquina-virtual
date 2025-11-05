@@ -10,11 +10,8 @@ pub struct Maquina {
 
 impl Maquina {
     pub fn new() -> Self {
-        let mut registradores = [0; 10];
-        executor::set_registrador(&mut registradores, registradores::PC, 0x6000);
-
         Self {
-            registradores,
+            registradores: [0; 10],
             memoria: [0; 32768],
         }
     }

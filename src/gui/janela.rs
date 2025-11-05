@@ -101,21 +101,40 @@ impl eframe::App for Janela {
             egui::ScrollArea::vertical()
                 .auto_shrink(false)
                 .show(ui, |ui| {
-                    for addr in (0x6000..0x60D0).step_by(8) {
-                        let slice = &memoria[addr..addr + 8];
-                        ui.monospace(format!(
-                            "{:04X}: {:02X} {:02X} {:02X} {:02X}  {:02X} {:02X} {:02X} {:02X}",
-                            addr,
-                            slice[0],
-                            slice[1],
-                            slice[2],
-                            slice[3],
-                            slice[4],
-                            slice[5],
-                            slice[6],
-                            slice[7]
-                        ));
-                    }
+                    ui.vertical(|ui| {
+                        for addr in (0x0000..0x0060).step_by(8) {
+                            let slice = &memoria[addr..addr + 8];
+                            ui.monospace(format!(
+                                "{:04X}: {:02X} {:02X} {:02X} {:02X}  {:02X} {:02X} {:02X} {:02X}",
+                                addr,
+                                slice[0],
+                                slice[1],
+                                slice[2],
+                                slice[3],
+                                slice[4],
+                                slice[5],
+                                slice[6],
+                                slice[7]
+                            ));
+                        }
+
+                        ui.separator();
+                        for addr in (0x6000..0x6060).step_by(8) {
+                            let slice = &memoria[addr..addr + 8];
+                            ui.monospace(format!(
+                                "{:04X}: {:02X} {:02X} {:02X} {:02X}  {:02X} {:02X} {:02X} {:02X}",
+                                addr,
+                                slice[0],
+                                slice[1],
+                                slice[2],
+                                slice[3],
+                                slice[4],
+                                slice[5],
+                                slice[6],
+                                slice[7]
+                            ));
+                        }
+                    })
                 });
         });
 
