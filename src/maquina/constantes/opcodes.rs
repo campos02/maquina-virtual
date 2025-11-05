@@ -18,3 +18,7 @@ pub const JGT: u8 = 0x34;
 pub const JLT: u8 = 0x38;
 pub const JSUB: u8 = 0x48;
 pub const TIX: u8 = 0x2C;
+pub const COMP: u8 = 0x28;
+pub const DIV: u8 = 0x24;
+pub const MUL: u8 = 0x20;
+pub const SUB: u8 = 0x1C;

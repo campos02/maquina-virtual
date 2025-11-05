@@ -504,6 +504,41 @@ pub fn executar_instrucao(registradores: &mut [u64], memoria: &mut [u8]) -> anyh
                         }
                     }
 
+                    opcodes::COMP => {
+                        let acumulador = registradores[registradores::A];
+                        let sw = registradores[registradores::SW];
+
+                        if acumulador > valor {
+                            // Setar CC para 01
+                            set_registrador(registradores, registradores::SW, sw & 0xFDFFFF);
+                            set_registrador(registradores, registradores::SW, sw | 0x010000);
+                        } else if acumulador < valor {
+                            // Setar CC para 11 (-1)
+                            set_registrador(registradores, registradores::SW, sw | 0x018000);
+                        } else {
+                            // Setar CC para 00
+                            set_registrador(registradores, registradores::SW, sw & 0xFCFFFF);
+                        }
+                    }
+
+                    opcodes::DIV => set_registrador(
+                        registradores,
+                        registradores::A,
+                        registradores[registradores::A] / valor,
+                    ),
+
+                    opcodes::MUL => set_registrador(
+                        registradores,
+                        registradores::A,
+                        registradores[registradores::A] * valor,
+                    ),
+
+                    opcodes::SUB => set_registrador(
+                        registradores,
+                        registradores::A,
+                        registradores[registradores::A] - valor,
+                    ),
+
                     _ => return Err(anyhow!("Instrução inválida")),
                 }
             }
