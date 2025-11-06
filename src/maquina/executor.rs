@@ -486,6 +486,123 @@ pub fn executar_instrucao(registradores: &mut [u64], memoria: &mut [u8]) -> anyh
                         set_registrador(registradores, registradores::PC, valor);
                     }
 
+                    opcodes::LDA => {
+                        let pc = registradores[registradores::PC] as usize;
+                        let endereco =
+                            ((memoria[pc + 1] as usize) << 8) | (memoria[pc + 2] as usize);
+
+                        let valor = ((memoria[endereco] as u32) << 16)
+                            | ((memoria[endereco + 1] as u32) << 8)
+                            | (memoria[endereco + 2] as u32);
+
+                        registradores[registradores::A] = valor as u64;
+                        registradores[registradores::PC] = (pc + 3) as u64;
+                    }
+
+                    opcodes::LDB => {
+                        let pc = registradores[registradores::PC] as usize;
+                        let endereco =
+                            ((memoria[pc + 1] as usize) << 8) | (memoria[pc + 2] as usize);
+
+                        let valor = ((memoria[endereco] as u32) << 16)
+                            | ((memoria[endereco + 1] as u32) << 8)
+                            | (memoria[endereco + 2] as u32);
+
+                        registradores[registradores::B] = valor as u64;
+                        registradores[registradores::PC] = (pc + 3) as u64;
+                    }
+
+                    opcodes::LDCH => {
+                        let pc = registradores[registradores::PC] as usize;
+                        let endereco =
+                            ((memoria[pc + 1] as usize) << 8) | (memoria[pc + 2] as usize);
+
+                        // Lê **1 byte** da memória
+                        let valor = memoria[endereco];
+
+                        // Armazena no acumulador A (somente os 8 bits menos significativos)
+                        registradores[registradores::A] = (valor as u64) & 0xFF;
+
+                        // Atualiza o PC (instrução de 3 bytes)
+                        registradores[registradores::PC] = (pc + 3) as u64;
+                    }
+
+                    opcodes::LDL => {
+                        let pc = registradores[registradores::PC] as usize;
+
+                        // Próximos 2 bytes formam o endereço
+                        let endereco =
+                            ((memoria[pc + 1] as usize) << 8) | (memoria[pc + 2] as usize);
+
+                        // Lê 3 bytes da memória
+                        let valor = ((memoria[endereco] as u32) << 16)
+                            | ((memoria[endereco + 1] as u32) << 8)
+                            | (memoria[endereco + 2] as u32);
+
+                        // Armazena no registrador L
+                        registradores[registradores::L] = valor as u64;
+
+                        // Atualiza o PC (3 bytes da instrução)
+                        registradores[registradores::PC] = (pc + 3) as u64;
+                    }
+
+                    opcodes::LDS => {
+                        let pc = registradores[registradores::PC] as usize;
+
+                        // Pega o endereço operand (2 bytes após o opcode)
+                        let endereco =
+                            ((memoria[pc + 1] as usize) << 8) | (memoria[pc + 2] as usize);
+
+                        // Lê 3 bytes da memória
+                        let valor = ((memoria[endereco] as u32) << 16)
+                            | ((memoria[endereco + 1] as u32) << 8)
+                            | (memoria[endereco + 2] as u32);
+
+                        // Guarda o valor no registrador S
+                        registradores[registradores::S] = valor as u64;
+
+                        // Avança o contador de programa (3 bytes)
+                        registradores[registradores::PC] = (pc + 3) as u64;
+                    }
+
+                    opcodes::LDT => {
+                        let pc = registradores[registradores::PC] as usize;
+
+                        // Pega o endereço do operando (2 bytes após o opcode)
+                        let endereco =
+                            ((memoria[pc + 1] as usize) << 8) | (memoria[pc + 2] as usize);
+
+                        // Lê 3 bytes da memória 
+                        let valor = ((memoria[endereco] as u32) << 16)
+                            | ((memoria[endereco + 1] as u32) << 8)
+                            | (memoria[endereco + 2] as u32);
+
+                        // Armazena no registrador T
+                        registradores[registradores::T] = valor as u64;
+
+                        // Avança o contador de programa
+                        registradores[registradores::PC] = (pc + 3) as u64;
+                    }
+
+                    opcodes::LDX => {
+                        let pc = registradores[registradores::PC] as usize;
+
+                        // Calcula o endereço do operando (2 bytes após o opcode)
+                        let endereco =
+                            ((memoria[pc + 1] as usize) << 8) | (memoria[pc + 2] as usize);
+
+                        // Lê 3 bytes consecutivos da memória 
+                        let valor = ((memoria[endereco] as u32) << 16)
+                            | ((memoria[endereco + 1] as u32) << 8)
+                            | (memoria[endereco + 2] as u32);
+
+                        // Armazena no registrador X
+                        registradores[registradores::X] = valor as u64;
+
+                        // Avança o contador de programa
+                        registradores[registradores::PC] = (pc + 3) as u64;
+                    }
+
                     opcodes::TIX => {
                         let x = registradores[registradores::X];
                         set_registrador(registradores, registradores::X, x + 1);
