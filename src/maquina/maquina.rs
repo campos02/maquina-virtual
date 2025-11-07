@@ -6,6 +6,7 @@ use anyhow::Context;
 pub struct Maquina {
     registradores: [u64; 10],
     memoria: [u8; 32768],
+    tamanho_programa_atual: usize,
 }
 
 impl Maquina {
@@ -13,6 +14,7 @@ impl Maquina {
         Self {
             registradores: [0; 10],
             memoria: [0; 32768],
+            tamanho_programa_atual: 0,
         }
     }
 
@@ -25,6 +27,7 @@ impl Maquina {
             .copy_from_slice(programa);
 
         executor::set_registrador(&mut self.registradores, registradores::PC, 0x6000);
+        self.tamanho_programa_atual = programa.len();
         Ok(())
     }
 
@@ -40,7 +43,13 @@ impl Maquina {
 
     /// Lê da memória, decodifica e executa uma instrução.
     pub fn executar_instrucao(&mut self) -> anyhow::Result<()> {
-        executor::executar_instrucao(&mut self.registradores, &mut self.memoria)
+        if self.tamanho_programa_atual == 0
+            || self.registradores[registradores::PC] - 0x6000 >= self.tamanho_programa_atual as u64
+        {
+            Err(anyhow::anyhow!("Execução finalizada"))
+        } else {
+            executor::executar_instrucao(&mut self.registradores, &mut self.memoria)
+        }
     }
 
     /// Reseta a máquina sem remover o programa carregado
