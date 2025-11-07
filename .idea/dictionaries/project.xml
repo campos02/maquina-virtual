@@ -4,12 +4,14 @@
       <w>compr</w>
       <w>divr</w>
       <w>jsub</w>
+      <w>ldch</w>
       <w>mulr</w>
       <w>reseta</w>
       <w>resetar</w>
       <w>rsub</w>
       <w>shiftl</w>
       <w>shiftr</w>
+      <w>stch</w>
       <w>subr</w>
       <w>tixr</w>
     </words>

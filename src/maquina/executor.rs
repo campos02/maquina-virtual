@@ -493,6 +493,63 @@ pub fn executar_instrucao(registradores: &mut [u64], memoria: &mut [u8]) -> anyh
                     opcodes::LDT => set_registrador(registradores, registradores::T, valor),
                     opcodes::LDX => set_registrador(registradores, registradores::X, valor),
 
+                    opcodes::STA => {
+                        let registrador_bytes = registradores[registradores::A].to_be_bytes();
+                        memoria
+                            .get_mut(valor as usize..valor as usize + 3)
+                            .context("Endereço de store inválido")?
+                            .copy_from_slice(&registrador_bytes[5..]);
+                    }
+
+                    opcodes::STB => {
+                        let registrador_bytes = registradores[registradores::B].to_be_bytes();
+                        memoria
+                            .get_mut(valor as usize..valor as usize + 3)
+                            .context("Endereço de store inválido")?
+                            .copy_from_slice(&registrador_bytes[5..]);
+                    }
+
+                    opcodes::STCH => {
+                        let registrador_bytes = registradores[registradores::A].to_be_bytes();
+                        let valor_endereco = memoria
+                            .get_mut(valor as usize)
+                            .context("Endereço de store inválido")?;
+
+                        *valor_endereco = registrador_bytes.last().copied().unwrap_or(0);
+                    }
+
+                    opcodes::STL => {
+                        let registrador_bytes = registradores[registradores::L].to_be_bytes();
+                        memoria
+                            .get_mut(valor as usize..valor as usize + 3)
+                            .context("Endereço de store inválido")?
+                            .copy_from_slice(&registrador_bytes[5..]);
+                    }
+
+                    opcodes::STS => {
+                        let registrador_bytes = registradores[registradores::S].to_be_bytes();
+                        memoria
+                            .get_mut(valor as usize..valor as usize + 3)
+                            .context("Endereço de store inválido")?
+                            .copy_from_slice(&registrador_bytes[5..]);
+                    }
+
+                    opcodes::STT => {
+                        let registrador_bytes = registradores[registradores::T].to_be_bytes();
+                        memoria
+                            .get_mut(valor as usize..valor as usize + 3)
+                            .context("Endereço de store inválido")?
+                            .copy_from_slice(&registrador_bytes[5..]);
+                    }
+
+                    opcodes::STX => {
+                        let registrador_bytes = registradores[registradores::X].to_be_bytes();
+                        memoria
+                            .get_mut(valor as usize..valor as usize + 3)
+                            .context("Endereço de store inválido")?
+                            .copy_from_slice(&registrador_bytes[5..]);
+                    }
+
                     opcodes::TIX => {
                         let x = registradores[registradores::X];
                         set_registrador(registradores, registradores::X, x + 1);
