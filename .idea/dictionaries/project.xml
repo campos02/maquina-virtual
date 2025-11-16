@@ -6,8 +6,10 @@
       <w>jsub</w>
       <w>ldch</w>
       <w>mulr</w>
+      <w>resb</w>
       <w>reseta</w>
       <w>resetar</w>
+      <w>resw</w>
       <w>rsub</w>
       <w>shiftl</w>
       <w>shiftr</w>
