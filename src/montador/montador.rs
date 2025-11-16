@@ -8,18 +8,14 @@ pub fn primeiro_passo(assembly: &str) -> HashMap<&str, usize> {
 
     if let Some(linha) = linhas.next() {
         let mut linha = linha.split_whitespace();
-        if let Some(operador_ou_label) = linha.next() {
-            // Caso for uma label verificar se é seguida de um START
-            if operador_ou_label != "START" {
-                if let Some(operador) = linha.next()
-                    && operador == "START"
-                    && let Some(operando) = linha.next()
-                {
-                    contador_localizacao = operando.parse::<usize>().unwrap_or_default();
-                }
-            } else if let Some(operando) = linha.next() {
-                contador_localizacao = operando.parse::<usize>().unwrap_or_default()
-            }
+        // Pular nome do programa
+        linha.next();
+
+        if let Some(operador) = linha.next()
+            && operador == "START"
+            && let Some(operando) = linha.next()
+        {
+            contador_localizacao = operando.parse::<usize>().unwrap_or_default();
         }
     }
 
