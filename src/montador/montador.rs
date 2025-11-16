@@ -40,7 +40,19 @@ pub fn primeiro_passo(assembly: &str) -> HashMap<&str, usize> {
                 Operacao::Start => continue,
                 Operacao::End => break,
 
-                Operacao::Byte => todo!(),
+                Operacao::Byte => {
+                    let operando = linha;
+                    if let Some(tipo) = operando.get(..1)
+                        && let Some(valor) = operando.get(1..)
+                    {
+                        let tamanho = valor.trim_matches('\'').len();
+                        if tipo == "C" {
+                            contador_localizacao += tamanho;
+                        } else if tipo == "X" {
+                            contador_localizacao += tamanho.div_ceil(2);
+                        }
+                    }
+                }
 
                 Operacao::Word => {
                     contador_localizacao += 3;
@@ -74,7 +86,18 @@ pub fn primeiro_passo(assembly: &str) -> HashMap<&str, usize> {
                 Operacao::Start => continue,
                 Operacao::End => break,
 
-                Operacao::Byte => todo!(),
+                Operacao::Byte => {
+                    if let Some(tipo) = operando.get(..1)
+                        && let Some(valor) = operando.get(1..)
+                    {
+                        let tamanho = valor.trim_matches('\'').len();
+                        if tipo == "C" {
+                            contador_localizacao += tamanho;
+                        } else if tipo == "X" {
+                            contador_localizacao += tamanho / 2;
+                        }
+                    }
+                }
 
                 Operacao::Word => {
                     contador_localizacao += 3;

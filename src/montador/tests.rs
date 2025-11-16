@@ -10,3 +10,13 @@ fn primeiro_passo_add() {
 
     assert_eq!(primeiro_passo(add), simbolos);
 }
+
+#[test]
+fn primeiro_passo_byte() {
+    let byte = include_str!("../../programas_exemplo/byte.asm");
+    let mut simbolos = HashMap::with_capacity(2);
+    simbolos.insert("INICIO", 1000);
+    simbolos.insert("ADD_1", 1007);
+
+    assert_eq!(primeiro_passo(byte), simbolos);
+}
