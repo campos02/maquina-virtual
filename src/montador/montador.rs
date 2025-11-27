@@ -1,7 +1,8 @@
 use crate::montador::tabela_operacoes::{Operacao, TABELA_OPERACOES};
+use anyhow::anyhow;
 use std::collections::HashMap;
 
-pub fn primeiro_passo(assembly: &str) -> HashMap<&str, usize> {
+pub fn primeiro_passo(assembly: &str) -> anyhow::Result<HashMap<&str, usize>> {
     // Pular linhas no começo que são só comentários
     let mut linhas = assembly.lines().skip_while(|l| l.trim().starts_with("."));
     let mut contador_localizacao = 0;
@@ -69,6 +70,10 @@ pub fn primeiro_passo(assembly: &str) -> HashMap<&str, usize> {
                 }
             }
         } else {
+            if tabela_simbolos.contains_key(label) {
+                return Err(anyhow!("Símbolo {} definido múltiplas vezes", label));
+            }
+
             tabela_simbolos.insert(label, contador_localizacao);
             let Some((operacao, operando)) = linha.trim().split_once(char::is_whitespace) else {
                 continue;
@@ -114,5 +119,5 @@ pub fn primeiro_passo(assembly: &str) -> HashMap<&str, usize> {
         }
     }
 
-    tabela_simbolos
+    Ok(tabela_simbolos)
 }

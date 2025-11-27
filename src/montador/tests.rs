@@ -8,7 +8,7 @@ fn primeiro_passo_add() {
     simbolos.insert("INICIO", 1000);
     simbolos.insert("STORE", 1006);
 
-    assert_eq!(primeiro_passo(add), simbolos);
+    assert_eq!(primeiro_passo(add).unwrap(), simbolos);
 }
 
 #[test]
@@ -18,5 +18,5 @@ fn primeiro_passo_byte() {
     simbolos.insert("INICIO", 1000);
     simbolos.insert("ADD_1", 1007);
 
-    assert_eq!(primeiro_passo(byte), simbolos);
+    assert_eq!(primeiro_passo(byte).unwrap(), simbolos);
 }
