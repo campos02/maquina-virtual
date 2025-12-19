@@ -26,7 +26,7 @@ pub static TABELA_OPERACOES: phf::Map<&'static str, Operacao> = phf_map! {
 
     "CLEAR" => Operacao::Instrucao {
         hex: opcodes::CLEAR,
-        tamanho: 3,
+        tamanho: 2,
     },
 
     "STA" => Operacao::Instrucao {
