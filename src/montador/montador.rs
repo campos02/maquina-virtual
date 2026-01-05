@@ -3,6 +3,7 @@ use crate::montador::tabela_operacoes::{Operacao, TABELA_OPERACOES};
 use crate::montador::tabela_registradores::TABELA_REGISTRADORES;
 use anyhow::anyhow;
 use std::collections::HashMap;
+use std::str::FromStr;
 
 pub fn primeiro_passo(assembly: &str) -> anyhow::Result<HashMap<&str, usize>> {
     // Pular linhas no começo que são só comentários
@@ -160,6 +161,43 @@ pub fn segundo_passo(
 
         match operacao_linha {
             Operacao::End => break,
+            Operacao::Byte => {
+                if let Some(tipo) = operando.get(..1)
+                    && let Some(valor) = operando.get(1..)
+                {
+                    let valor = valor.trim_matches('\'');
+                    if tipo == "C" {
+                        let Ok(valor) = char::from_str(valor) else {
+                            return Err(anyhow!("Byte inválido: {}", valor));
+                        };
+
+                        if !valor.is_ascii() {
+                            return Err(anyhow!("Caractere não ASCII: {}", valor));
+                        };
+
+                        codigo_objeto.push_str(format!("{:02X}", valor as u8).as_str());
+                    } else if tipo == "X" {
+                        let Ok(valor) = u8::from_str_radix(valor, 16) else {
+                            return Err(anyhow!("Byte inválido: {}", valor));
+                        };
+
+                        codigo_objeto.push_str(format!("{:02X}", valor).as_str());
+                    }
+                }
+            }
+
+            Operacao::Word => {
+                let Ok(word) = operando.parse::<u32>() else {
+                    return Err(anyhow!("WORD inválida: {}", operando));
+                };
+
+                if word > 4095 {
+                    return Err(anyhow!("WORD inválida: {}", operando));
+                };
+
+                codigo_objeto.push_str(format!("{:06X}", word).as_str());
+            }
+
             Operacao::Instrucao { hex, tamanho } => {
                 if *tamanho == 2 {
                     codigo_objeto.push_str(format!("{:02X}", hex).as_str());
