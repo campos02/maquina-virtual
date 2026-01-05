@@ -34,50 +34,19 @@ pub fn primeiro_passo(assembly: &str) -> anyhow::Result<HashMap<&str, usize>> {
             continue;
         };
 
+        let operacao_linha;
+        let operando;
+
         if let Some(operacao) = TABELA_OPERACOES.get(label) {
-            match operacao {
-                Operacao::Start => continue,
-                Operacao::End => break,
-
-                Operacao::Byte => {
-                    let operando = linha;
-                    if let Some(tipo) = operando.get(..1)
-                        && let Some(valor) = operando.get(1..)
-                    {
-                        let tamanho = valor.trim_matches('\'').len();
-                        if tipo == "C" {
-                            contador_localizacao += tamanho;
-                        } else if tipo == "X" {
-                            contador_localizacao += tamanho.div_ceil(2);
-                        }
-                    }
-                }
-
-                Operacao::Word => {
-                    contador_localizacao += 3;
-                }
-
-                Operacao::ReserveWord => {
-                    let operando = linha;
-                    contador_localizacao += 3 * operando.parse::<usize>().unwrap_or_default();
-                }
-
-                Operacao::ReserveBytes => {
-                    let operando = linha;
-                    contador_localizacao += operando.parse::<usize>().unwrap_or_default();
-                }
-
-                Operacao::Instrucao { hex: _, tamanho } => {
-                    contador_localizacao += tamanho;
-                }
-            }
+            operacao_linha = operacao;
+            operando = linha;
         } else {
             if tabela_simbolos.contains_key(label) {
                 return Err(anyhow!("Símbolo {} definido múltiplas vezes", label));
             }
 
             tabela_simbolos.insert(label, contador_localizacao);
-            let Some((operacao, operando)) = linha.trim().split_once(char::is_whitespace) else {
+            let Some((operacao, linha)) = linha.trim().split_once(char::is_whitespace) else {
                 continue;
             };
 
@@ -85,38 +54,41 @@ pub fn primeiro_passo(assembly: &str) -> anyhow::Result<HashMap<&str, usize>> {
                 continue;
             };
 
-            match operacao {
-                Operacao::Start => continue,
-                Operacao::End => break,
+            operacao_linha = operacao;
+            operando = linha;
+        }
 
-                Operacao::Byte => {
-                    if let Some(tipo) = operando.get(..1)
-                        && let Some(valor) = operando.get(1..)
-                    {
-                        let tamanho = valor.trim_matches('\'').len();
-                        if tipo == "C" {
-                            contador_localizacao += tamanho;
-                        } else if tipo == "X" {
-                            contador_localizacao += tamanho / 2;
-                        }
+        match operacao_linha {
+            Operacao::Start => continue,
+            Operacao::End => break,
+
+            Operacao::Byte => {
+                if let Some(tipo) = operando.get(..1)
+                    && let Some(valor) = operando.get(1..)
+                {
+                    let tamanho = valor.trim_matches('\'').len();
+                    if tipo == "C" {
+                        contador_localizacao += tamanho;
+                    } else if tipo == "X" {
+                        contador_localizacao += tamanho.div_ceil(2);
                     }
                 }
+            }
 
-                Operacao::Word => {
-                    contador_localizacao += 3;
-                }
+            Operacao::Word => {
+                contador_localizacao += 3;
+            }
 
-                Operacao::ReserveWord => {
-                    contador_localizacao += 3 * operando.parse::<usize>().unwrap_or_default();
-                }
+            Operacao::ReserveWord => {
+                contador_localizacao += 3 * operando.parse::<usize>().unwrap_or_default();
+            }
 
-                Operacao::ReserveBytes => {
-                    contador_localizacao += operando.parse::<usize>().unwrap_or_default();
-                }
+            Operacao::ReserveBytes => {
+                contador_localizacao += operando.parse::<usize>().unwrap_or_default();
+            }
 
-                Operacao::Instrucao { hex: _, tamanho } => {
-                    contador_localizacao += tamanho;
-                }
+            Operacao::Instrucao { hex: _, tamanho } => {
+                contador_localizacao += tamanho;
             }
         }
     }
