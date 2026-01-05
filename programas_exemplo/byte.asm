@@ -1,5 +1,5 @@
 . Programa teste da diretiva BYTE
-TESTE_BYTE  START 1000
+T_BYTE  START 1000
 
 INICIO      BYTE C'teste'
             BYTE X'050'

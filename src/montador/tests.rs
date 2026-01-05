@@ -1,4 +1,4 @@
-use crate::montador::montador::primeiro_passo;
+use crate::montador::montador::{primeiro_passo, segundo_passo};
 use std::collections::HashMap;
 
 #[test]
@@ -19,4 +19,18 @@ fn primeiro_passo_byte() {
     simbolos.insert("ADD_1", 1007);
 
     assert_eq!(primeiro_passo(byte).unwrap(), simbolos);
+}
+
+#[test]
+fn montar_add() {
+    let add = include_str!("../../programas_exemplo/add.asm");
+    let mut simbolos = HashMap::with_capacity(2);
+    simbolos.insert("INICIO", 1000);
+    simbolos.insert("STORE", 1006);
+
+    assert_eq!(primeiro_passo(add).unwrap(), simbolos);
+    assert_eq!(
+        segundo_passo(add, &simbolos).unwrap(),
+        "HT_ADD 0010000000C9\nT001000171900011900010D000004000\nE001000"
+    );
 }

@@ -1,5 +1,5 @@
 . Programa teste do montador
-TESTE_ADD   START 1000
+T_ADD   START 1000
 
 INICIO      ADD #1
             ADD #1
