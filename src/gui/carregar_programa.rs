@@ -1,26 +1,59 @@
 use crate::maquina::maquina::Maquina;
+use crate::montador::macros;
+use crate::montador::montador;
 use anyhow::Context;
 use rfd::FileDialog;
 
 pub fn carregar_programa(maquina: &mut Maquina) -> anyhow::Result<()> {
+    // 1. Abre a janela para selecionar o arquivo .asm
     let arquivo = FileDialog::new()
-        .set_title("Carregar programa")
-        .add_filter("Arquivo Hex SIC/XE (.hex)", &["hex"])
+        .set_title("Carregar código fonte (.asm)")
+        .add_filter("Código SIC/XE (.asm)", &["asm"])
         .pick_file()
         .context("Nenhum arquivo selecionado")?;
 
-    let hex = std::fs::read_to_string(arquivo).context("Erro ao ler arquivo")?;
-    let hex = hex.trim();
+    let caminho_arquivo = arquivo.to_str().context("Caminho inválido")?;
 
-    let mut chars = hex.chars();
-    let mut bytes = Vec::with_capacity(hex.len() / 2);
+    // 2. Chama o Processador de Macros (Etapa 3)
+    // Isso gera o arquivo MASMAPRG.ASM na pasta do seu projeto
+    macros::processar(caminho_arquivo)?;
 
+    // 3. Lê o arquivo expandido gerado pelas macros
+    let conteudo_asm = std::fs::read_to_string("MASMAPRG.ASM")
+        .context("Erro ao ler MASMAPRG.ASM")?;
+
+    // 4. Roda o Montador (Etapa 2)
+    let tabela_simbolos = montador::primeiro_passo(&conteudo_asm)?;
+    let registro_objeto = montador::segundo_passo(&conteudo_asm, &tabela_simbolos)?;
+
+    // 5. Converte a string do registro objeto (formato H T E) em bytes reais
+    // Vamos focar no registro 'T' (Text) que contém o código
+    let bytes = extrair_bytes_do_objeto(&registro_objeto)?;
+
+    // 6. Finalmente carrega na memória da máquina
+    maquina.carregar(&bytes)
+}
+
+/// Função auxiliar para transformar a string "HTE..." em bytes de verdade
+fn extrair_bytes_do_objeto(objeto: &str) -> anyhow::Result<Vec<u8>> {
+    // Procurar a linha que começa com 'T' (Registro de Texto)
+    let linha_t = objeto.lines()
+        .find(|l| l.starts_with('T'))
+        .context("Registro de texto (T) não encontrado no código objeto")?;
+
+    // No seu montador, o código real começa após o endereço e tamanho
+    // T + 6 (endereço) + 2 (tamanho) = 9 caracteres de prefixo
+    let codigo_hex = &linha_t[9..];
+    
+    let mut bytes = Vec::new();
+    let mut chars = codigo_hex.chars();
+    
     while let (Some(d1), Some(d2)) = (chars.next(), chars.next()) {
-        let b = [d1, d2].iter().collect::<String>();
-        if let Ok(b) = u8::from_str_radix(&b, 16) {
-            bytes.push(b);
+        let par = format!("{}{}", d1, d2);
+        if let Ok(byte) = u8::from_str_radix(&par, 16) {
+            bytes.push(byte);
         }
     }
-
-    maquina.carregar(&bytes)
+    
+    Ok(bytes)
 }
