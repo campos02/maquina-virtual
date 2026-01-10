@@ -19,7 +19,7 @@ pub fn primeiro_passo(assembly: &str) -> anyhow::Result<HashMap<&str, usize>> {
             && operador == "START"
             && let Some(operando) = linha.next()
         {
-            contador_localizacao = operando.parse::<usize>().unwrap_or_default();
+            contador_localizacao = usize::from_str_radix(operando, 16).unwrap_or_default();
         }
     }
 
@@ -109,7 +109,6 @@ pub fn segundo_passo(
     assembly: &str,
     tabela_simbolos: &HashMap<&str, usize>,
 ) -> anyhow::Result<String> {
-    // Pular linhas no começo que são só comentários
     let mut linhas = assembly.lines().skip_while(|l| l.trim().starts_with("."));
 
     let mut nome_programa = "";
@@ -184,16 +183,11 @@ pub fn segundo_passo(
                             codigo_objeto.push_str(format!("{:02X}", c as u8).as_str());
                         }
                     } else if tipo == "X" {
-                        // Verifica se é válido hexadecimal antes de adicionar
-                         if let Ok(byte_val) = u8::from_str_radix(valor, 16) {
-                             codigo_objeto.push_str(format!("{:02X}", byte_val).as_str());
-                         } else {
-                             // Se for uma string longa hex (ex: X'F1F2'), processar byte a byte seria ideal,
-                             // mas mantendo o mínimo: assume que cabe num u8 ou trata string
-                             // O código original tentava u8 direto, o que falha pra X'000005'.
-                             // Ajuste mínimo para o seu teste funcionar:
-                             codigo_objeto.push_str(valor); 
-                         }
+                        if valor.len() % 2 != 0 {
+                            codigo_objeto.push_str(format!("0{}", valor).as_str());
+                        } else {
+                            codigo_objeto.push_str(valor);
+                        }
                     }
                 }
             }
@@ -275,7 +269,9 @@ pub fn segundo_passo(
                         flags_restantes |= 8; // Flag x (indexado)
                     }
 
-                    let operando_valor = if let Some(local) = tabela_simbolos.get(operando) {
+                    let operando_valor = if operando.is_empty() {
+                        0
+                    } else if let Some(local) = tabela_simbolos.get(operando) {
                         *local
                     } else {
                         // Tenta parsear número direto
@@ -303,12 +299,22 @@ pub fn segundo_passo(
         }
     }
 
-    Ok(format!(
-        "H{nome_programa} {:06X}{:06X}\nT{:06X}{:02X}{codigo_objeto}\nE{:06X}",
-        endereco_inicial,
-        assembly.len(), // Tamanho aproximado
-        endereco_inicial,
-        codigo_objeto.len() / 2, // Tamanho real em bytes
-        endereco_inicial
-    ))
+    let mut final_obj = format!("H{:<6}{:06X}{:06X}\n", nome_programa, endereco_inicial, codigo_objeto.len() / 2);    
+    let mut cursor = 0;
+    let mut addr_t = endereco_inicial;
+
+    while cursor < codigo_objeto.len() {
+        // Pega no máximo 60 chars (30 bytes) por vez
+        let chunk_size = std::cmp::min(60, codigo_objeto.len() - cursor);
+        let chunk = &codigo_objeto[cursor..cursor + chunk_size];
+        
+        final_obj.push_str(&format!("T{:06X}{:02X}{}\n", addr_t, chunk.len() / 2, chunk));
+        
+        addr_t += chunk.len() / 2;
+        cursor += chunk_size;
+    }
+
+    final_obj.push_str(&format!("E{:06X}", endereco_inicial));
+    
+    Ok(final_obj)
 }

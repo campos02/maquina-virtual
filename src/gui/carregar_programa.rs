@@ -36,23 +36,29 @@ pub fn carregar_programa(maquina: &mut Maquina) -> anyhow::Result<()> {
 
 /// Função auxiliar para transformar a string "HTE..." em bytes de verdade
 fn extrair_bytes_do_objeto(objeto: &str) -> anyhow::Result<Vec<u8>> {
-    // Procurar a linha que começa com 'T' (Registro de Texto)
-    let linha_t = objeto.lines()
-        .find(|l| l.starts_with('T'))
-        .context("Registro de texto (T) não encontrado no código objeto")?;
-
-    // No seu montador, o código real começa após o endereço e tamanho
-    // T + 6 (endereço) + 2 (tamanho) = 9 caracteres de prefixo
-    let codigo_hex = &linha_t[9..];
-    
     let mut bytes = Vec::new();
-    let mut chars = codigo_hex.chars();
-    
-    while let (Some(d1), Some(d2)) = (chars.next(), chars.next()) {
-        let par = format!("{}{}", d1, d2);
-        if let Ok(byte) = u8::from_str_radix(&par, 16) {
-            bytes.push(byte);
+
+    // MUDANÇA: Usamos um loop 'for' para ler TODAS as linhas T (Card #49)
+    for linha in objeto.lines() {
+        if linha.starts_with('T') {
+            // No formato SIC/XE: T (1 char) + Endereço (6 chars) + Tamanho (2 chars) = 9 chars de cabeçalho
+            // O código real começa no índice 9
+            if linha.len() > 9 {
+                let codigo_hex = &linha[9..];
+                
+                let mut chars = codigo_hex.chars();
+                while let (Some(d1), Some(d2)) = (chars.next(), chars.next()) {
+                    let par = format!("{}{}", d1, d2);
+                    if let Ok(byte) = u8::from_str_radix(&par, 16) {
+                        bytes.push(byte);
+                    }
+                }
+            }
         }
+    }
+    
+    if bytes.is_empty() {
+        return Err(anyhow::anyhow!("Nenhum registro de texto (T) encontrado"));
     }
     
     Ok(bytes)

@@ -1,6 +1,6 @@
 pub const ADD: u8 = 0x18;
 pub const ADDR: u8 = 0x90;
-pub const CLEAR: u8 = 0x04;
+pub const CLEAR: u8 = 0xB4;
 pub const COMPR: u8 = 0xA0;
 pub const DIVR: u8 = 0x9C;
 pub const MULR: u8 = 0x98;
