@@ -3,7 +3,6 @@ use crate::montador::tabela_operacoes::{Operacao, TABELA_OPERACOES};
 use crate::montador::tabela_registradores::TABELA_REGISTRADORES;
 use anyhow::anyhow;
 use std::collections::HashMap;
-use std::str::FromStr;
 
 pub fn primeiro_passo(assembly: &str) -> anyhow::Result<HashMap<&str, usize>> {
     // Pular linhas no começo que são só comentários
@@ -51,13 +50,15 @@ pub fn primeiro_passo(assembly: &str) -> anyhow::Result<HashMap<&str, usize>> {
             }
 
             tabela_simbolos.insert(label, contador_localizacao);
-            
+
             let linha_trim = linha_resto.trim();
             if linha_trim.is_empty() {
                 continue;
             }
 
-            let (operacao_str, resto) = linha_trim.split_once(char::is_whitespace).unwrap_or((linha_trim, ""));
+            let (operacao_str, resto) = linha_trim
+                .split_once(char::is_whitespace)
+                .unwrap_or((linha_trim, ""));
 
             let Some(operacao) = TABELA_OPERACOES.get(operacao_str) else {
                 continue;
@@ -158,7 +159,9 @@ pub fn segundo_passo(
             operando = linha_resto.trim(); // <--- CORREÇÃO 3: Trim aqui
         } else {
             let linha_trim = linha_resto.trim();
-            let (operacao_str, resto) = linha_trim.split_once(char::is_whitespace).unwrap_or((linha_trim, ""));
+            let (operacao_str, resto) = linha_trim
+                .split_once(char::is_whitespace)
+                .unwrap_or((linha_trim, ""));
 
             let Some(operacao) = TABELA_OPERACOES.get(operacao_str) else {
                 continue; // Linha inválida ou label sozinho, ignora
@@ -198,7 +201,7 @@ pub fn segundo_passo(
                 };
 
                 if word > 16777215 { // Limite de 24 bits (FFFFFF)
-                     // Opcional: avisar erro ou truncar. Mantendo comportamento original.
+                    // Opcional: avisar erro ou truncar. Mantendo comportamento original.
                 }
 
                 codigo_objeto.push_str(format!("{:06X}", word).as_str());
@@ -215,7 +218,9 @@ pub fn segundo_passo(
                                 let Ok(r1) = operando.parse::<u8>() else {
                                     return Err(anyhow!("Registrador 1 inválido: {}", operando));
                                 };
-                                if r1 > 9 { return Err(anyhow!("Registrador 1 inválido")); }
+                                if r1 > 9 {
+                                    return Err(anyhow!("Registrador 1 inválido"));
+                                }
                                 r1
                             };
                             codigo_objeto.push_str(format!("{:X}0", r1).as_str());
@@ -226,20 +231,24 @@ pub fn segundo_passo(
                             let Some((r1_str, r2_str)) = operando.split_once(',') else {
                                 return Err(anyhow!("Operando inválido, esperado r1,r2"));
                             };
-                            
+
                             let r1_limpo = r1_str.trim();
                             let r2_limpo = r2_str.trim();
 
                             let r1 = if let Some(r1) = TABELA_REGISTRADORES.get(r1_limpo) {
                                 *r1
                             } else {
-                                r1_limpo.parse::<u8>().map_err(|_| anyhow!("Reg 1 inválido: {}", r1_limpo))?
+                                r1_limpo
+                                    .parse::<u8>()
+                                    .map_err(|_| anyhow!("Reg 1 inválido: {}", r1_limpo))?
                             };
 
                             let r2 = if let Some(r2) = TABELA_REGISTRADORES.get(r2_limpo) {
                                 *r2
                             } else {
-                                r2_limpo.parse::<u8>().map_err(|_| anyhow!("Reg 2 inválido: {}", r2_limpo))?
+                                r2_limpo
+                                    .parse::<u8>()
+                                    .map_err(|_| anyhow!("Reg 2 inválido: {}", r2_limpo))?
                             };
 
                             codigo_objeto.push_str(format!("{:X}{:X}", r1, r2).as_str());
@@ -275,15 +284,20 @@ pub fn segundo_passo(
                         *local
                     } else {
                         // Tenta parsear número direto
-                        operando.parse::<usize>().map_err(|_| anyhow!("Símbolo não encontrado ou número inválido: '{}'", operando))?
+                        operando.parse::<usize>().map_err(|_| {
+                            anyhow!("Símbolo não encontrado ou número inválido: '{}'", operando)
+                        })?
                     };
 
                     // Verifica tamanho vs capacidade
                     if operando_valor > 4095 && *tamanho < 4 {
-                         // Em um montador real SIC/XE, aqui calcularíamos Base/PC relativo.
-                         // Como seu código original não calculava deslocamento (flags b/p),
-                         // mantemos a lógica simples de erro se não couber.
-                         return Err(anyhow!("Endereço muito grande para formato 3: {:X}", operando_valor));
+                        // Em um montador real SIC/XE, aqui calcularíamos Base/PC relativo.
+                        // Como seu código original não calculava deslocamento (flags b/p),
+                        // mantemos a lógica simples de erro se não couber.
+                        return Err(anyhow!(
+                            "Endereço muito grande para formato 3: {:X}",
+                            operando_valor
+                        ));
                     }
 
                     codigo_objeto.push_str(format!("{:X}", flags_restantes).as_str());
@@ -299,7 +313,12 @@ pub fn segundo_passo(
         }
     }
 
-    let mut final_obj = format!("H{:<6}{:06X}{:06X}\n", nome_programa, endereco_inicial, codigo_objeto.len() / 2);    
+    let mut final_obj = format!(
+        "H{:<6}{:06X}{:06X}\n",
+        nome_programa,
+        endereco_inicial,
+        codigo_objeto.len() / 2
+    );
     let mut cursor = 0;
     let mut addr_t = endereco_inicial;
 
@@ -307,14 +326,19 @@ pub fn segundo_passo(
         // Pega no máximo 60 chars (30 bytes) por vez
         let chunk_size = std::cmp::min(60, codigo_objeto.len() - cursor);
         let chunk = &codigo_objeto[cursor..cursor + chunk_size];
-        
-        final_obj.push_str(&format!("T{:06X}{:02X}{}\n", addr_t, chunk.len() / 2, chunk));
-        
+
+        final_obj.push_str(&format!(
+            "T{:06X}{:02X}{}\n",
+            addr_t,
+            chunk.len() / 2,
+            chunk
+        ));
+
         addr_t += chunk.len() / 2;
         cursor += chunk_size;
     }
 
     final_obj.push_str(&format!("E{:06X}", endereco_inicial));
-    
+
     Ok(final_obj)
 }

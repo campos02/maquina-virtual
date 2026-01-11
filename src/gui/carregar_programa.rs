@@ -1,6 +1,6 @@
 use crate::maquina::maquina::Maquina;
-use crate::montador::macros;
 use crate::montador::montador;
+use crate::processador_macros::macros;
 use anyhow::Context;
 use rfd::FileDialog;
 
@@ -19,8 +19,8 @@ pub fn carregar_programa(maquina: &mut Maquina) -> anyhow::Result<()> {
     macros::processar(caminho_arquivo)?;
 
     // 3. Lê o arquivo expandido gerado pelas macros
-    let conteudo_asm = std::fs::read_to_string("MASMAPRG.ASM")
-        .context("Erro ao ler MASMAPRG.ASM")?;
+    let conteudo_asm =
+        std::fs::read_to_string("MASMAPRG.ASM").context("Erro ao ler MASMAPRG.ASM")?;
 
     // 4. Roda o Montador (Etapa 2)
     let tabela_simbolos = montador::primeiro_passo(&conteudo_asm)?;
@@ -45,7 +45,7 @@ fn extrair_bytes_do_objeto(objeto: &str) -> anyhow::Result<Vec<u8>> {
             // O código real começa no índice 9
             if linha.len() > 9 {
                 let codigo_hex = &linha[9..];
-                
+
                 let mut chars = codigo_hex.chars();
                 while let (Some(d1), Some(d2)) = (chars.next(), chars.next()) {
                     let par = format!("{}{}", d1, d2);
@@ -56,10 +56,10 @@ fn extrair_bytes_do_objeto(objeto: &str) -> anyhow::Result<Vec<u8>> {
             }
         }
     }
-    
+
     if bytes.is_empty() {
         return Err(anyhow::anyhow!("Nenhum registro de texto (T) encontrado"));
     }
-    
+
     Ok(bytes)
 }

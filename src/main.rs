@@ -1,6 +1,7 @@
 mod gui;
 mod maquina;
 mod montador;
+mod processador_macros;
 
 use eframe::egui;
 use gui::janela::Janela;
