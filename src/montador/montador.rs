@@ -1,7 +1,7 @@
 use crate::maquina::constantes::opcodes;
 use crate::montador::tabela_operacoes::{Operacao, TABELA_OPERACOES};
 use crate::montador::tabela_registradores::TABELA_REGISTRADORES;
-use anyhow::anyhow;
+use anyhow::{Context, anyhow};
 use std::collections::HashMap;
 
 pub fn primeiro_passo(assembly: &str) -> anyhow::Result<HashMap<&str, usize>> {
@@ -24,48 +24,38 @@ pub fn primeiro_passo(assembly: &str) -> anyhow::Result<HashMap<&str, usize>> {
 
     let mut tabela_simbolos = HashMap::new();
     for linha in linhas {
-        // Remover comentários e limpar espaços das pontas
+        // Remover comentários
         let linha = linha
             .split_once(".")
             .map(|(linha, _)| linha)
-            .unwrap_or(linha)
-            .trim(); // <--- IMPORTANTE: Garante que linha vazia seja detectada
+            .unwrap_or(linha);
 
-        if linha.is_empty() {
+        let Some((label, linha)) = linha.trim().split_once(char::is_whitespace) else {
             continue;
-        }
-
-        // Tenta dividir entre Label e o Resto. Se não tiver espaço (ex: RSUB), trata como só Label/Op.
-        let (label, linha_resto) = linha.split_once(char::is_whitespace).unwrap_or((linha, ""));
+        };
 
         let operacao_linha;
         let operando;
 
         if let Some(operacao) = TABELA_OPERACOES.get(label) {
             operacao_linha = operacao;
-            operando = linha_resto.trim(); // <--- CORREÇÃO 1: Limpa espaços do operando
+            operando = linha.trim();
         } else {
             if tabela_simbolos.contains_key(label) {
                 return Err(anyhow!("Símbolo {} definido múltiplas vezes", label));
             }
 
             tabela_simbolos.insert(label, contador_localizacao);
-
-            let linha_trim = linha_resto.trim();
-            if linha_trim.is_empty() {
+            let Some((operacao, linha)) = linha.trim().split_once(char::is_whitespace) else {
                 continue;
-            }
+            };
 
-            let (operacao_str, resto) = linha_trim
-                .split_once(char::is_whitespace)
-                .unwrap_or((linha_trim, ""));
-
-            let Some(operacao) = TABELA_OPERACOES.get(operacao_str) else {
+            let Some(operacao) = TABELA_OPERACOES.get(operacao) else {
                 continue;
             };
 
             operacao_linha = operacao;
-            operando = resto.trim(); // <--- CORREÇÃO 2: Limpa espaços do operando
+            operando = linha.trim();
         }
 
         match operacao_linha {
@@ -110,6 +100,7 @@ pub fn segundo_passo(
     assembly: &str,
     tabela_simbolos: &HashMap<&str, usize>,
 ) -> anyhow::Result<String> {
+    // Pular linhas no começo que são só comentários
     let mut linhas = assembly.lines().skip_while(|l| l.trim().starts_with("."));
 
     let mut nome_programa = "";
@@ -138,37 +129,33 @@ pub fn segundo_passo(
 
     let mut codigo_objeto = String::from("");
     for linha in linhas {
-        // Remover comentários e limpar
+        // Remover comentários
         let linha = linha
             .split_once(".")
             .map(|(linha, _)| linha)
-            .unwrap_or(linha)
-            .trim();
+            .unwrap_or(linha);
 
-        if linha.is_empty() {
+        let Some((label, linha)) = linha.trim().split_once(char::is_whitespace) else {
             continue;
-        }
-
-        let (label, linha_resto) = linha.split_once(char::is_whitespace).unwrap_or((linha, ""));
+        };
 
         let operacao_linha;
         let mut operando;
 
         if let Some(operacao) = TABELA_OPERACOES.get(label) {
             operacao_linha = operacao;
-            operando = linha_resto.trim(); // <--- CORREÇÃO 3: Trim aqui
+            operando = linha.trim();
         } else {
-            let linha_trim = linha_resto.trim();
-            let (operacao_str, resto) = linha_trim
-                .split_once(char::is_whitespace)
-                .unwrap_or((linha_trim, ""));
+            let Some((operacao, linha)) = linha.trim().split_once(char::is_whitespace) else {
+                continue;
+            };
 
-            let Some(operacao) = TABELA_OPERACOES.get(operacao_str) else {
-                continue; // Linha inválida ou label sozinho, ignora
+            let Some(operacao) = TABELA_OPERACOES.get(operacao) else {
+                return Err(anyhow!("Operação inválida: {}", operacao));
             };
 
             operacao_linha = operacao;
-            operando = resto.trim(); // <--- CORREÇÃO 4: Trim aqui
+            operando = linha.trim();
         }
 
         match operacao_linha {
@@ -183,14 +170,15 @@ pub fn segundo_passo(
                             if !c.is_ascii() {
                                 return Err(anyhow!("Caractere não ASCII: {}", c));
                             }
+
                             codigo_objeto.push_str(format!("{:02X}", c as u8).as_str());
                         }
                     } else if tipo == "X" {
-                        if valor.len() % 2 != 0 {
-                            codigo_objeto.push_str(format!("0{}", valor).as_str());
-                        } else {
-                            codigo_objeto.push_str(valor);
-                        }
+                        let Ok(valor) = u8::from_str_radix(valor, 16) else {
+                            return Err(anyhow!("Byte inválido: {}", valor));
+                        };
+
+                        codigo_objeto.push_str(format!("{:02X}", valor).as_str());
                     }
                 }
             }
@@ -200,8 +188,9 @@ pub fn segundo_passo(
                     return Err(anyhow!("WORD inválida: {}", operando));
                 };
 
-                if word > 16777215 { // Limite de 24 bits (FFFFFF)
-                    // Opcional: avisar erro ou truncar. Mantendo comportamento original.
+                // Limite de 24 bits
+                if word > 0xFFFFFF {
+                    return Err(anyhow!("WORD inválida: {}", operando));
                 }
 
                 codigo_objeto.push_str(format!("{:06X}", word).as_str());
@@ -218,37 +207,51 @@ pub fn segundo_passo(
                                 let Ok(r1) = operando.parse::<u8>() else {
                                     return Err(anyhow!("Registrador 1 inválido: {}", operando));
                                 };
+
                                 if r1 > 9 {
                                     return Err(anyhow!("Registrador 1 inválido"));
                                 }
+
                                 r1
                             };
+
                             codigo_objeto.push_str(format!("{:X}0", r1).as_str());
                         }
 
                         _ => {
-                            // CORREÇÃO 5: Lidar com espaços entre registradores (ADDR S, A)
-                            let Some((r1_str, r2_str)) = operando.split_once(',') else {
+                            let Some((r1, r2)) = operando.split_once(',') else {
                                 return Err(anyhow!("Operando inválido, esperado r1,r2"));
                             };
 
-                            let r1_limpo = r1_str.trim();
-                            let r2_limpo = r2_str.trim();
+                            let r1 = r1.trim();
+                            let r2 = r2.trim();
 
-                            let r1 = if let Some(r1) = TABELA_REGISTRADORES.get(r1_limpo) {
+                            let r1 = if let Some(r1) = TABELA_REGISTRADORES.get(r1) {
                                 *r1
                             } else {
-                                r1_limpo
+                                let r1 = r1
                                     .parse::<u8>()
-                                    .map_err(|_| anyhow!("Reg 1 inválido: {}", r1_limpo))?
+                                    .context(format!("Registrador 1 inválido: {}", r1))?;
+
+                                if r1 > 9 {
+                                    return Err(anyhow!("Registrador 1 inválido"));
+                                }
+
+                                r1
                             };
 
-                            let r2 = if let Some(r2) = TABELA_REGISTRADORES.get(r2_limpo) {
+                            let r2 = if let Some(r2) = TABELA_REGISTRADORES.get(r2) {
                                 *r2
                             } else {
-                                r2_limpo
+                                let r2 = r2
                                     .parse::<u8>()
-                                    .map_err(|_| anyhow!("Reg 2 inválido: {}", r2_limpo))?
+                                    .context(format!("Registrador 2 inválido: {}", r2))?;
+
+                                if r2 > 9 {
+                                    return Err(anyhow!("Registrador 1 inválido"));
+                                }
+
+                                r2
                             };
 
                             codigo_objeto.push_str(format!("{:X}{:X}", r1, r2).as_str());
@@ -278,33 +281,27 @@ pub fn segundo_passo(
                         flags_restantes |= 8; // Flag x (indexado)
                     }
 
-                    let operando_valor = if operando.is_empty() {
+                    let operando = if operando.is_empty() {
                         0
                     } else if let Some(local) = tabela_simbolos.get(operando) {
                         *local
                     } else {
-                        // Tenta parsear número direto
-                        operando.parse::<usize>().map_err(|_| {
-                            anyhow!("Símbolo não encontrado ou número inválido: '{}'", operando)
-                        })?
+                        operando.parse::<usize>().context(format!(
+                            "Símbolo não encontrado ou número inválido: '{}'",
+                            operando
+                        ))?
                     };
 
-                    // Verifica tamanho vs capacidade
-                    if operando_valor > 4095 && *tamanho < 4 {
-                        // Em um montador real SIC/XE, aqui calcularíamos Base/PC relativo.
-                        // Como seu código original não calculava deslocamento (flags b/p),
-                        // mantemos a lógica simples de erro se não couber.
-                        return Err(anyhow!(
-                            "Endereço muito grande para formato 3: {:X}",
-                            operando_valor
-                        ));
+                    // Verifica tamanho e capacidade
+                    if operando > 4095 && *tamanho < 4 {
+                        return Err(anyhow!("Valor muito grande para formato 3: {}", operando));
                     }
 
                     codigo_objeto.push_str(format!("{:X}", flags_restantes).as_str());
                     if *tamanho < 4 {
-                        codigo_objeto.push_str(format!("{:03X}", operando_valor).as_str());
+                        codigo_objeto.push_str(format!("{:03X}", operando).as_str());
                     } else {
-                        codigo_objeto.push_str(format!("{:05X}", operando_valor).as_str());
+                        codigo_objeto.push_str(format!("{:05X}", operando).as_str());
                     }
                 }
             }
@@ -313,32 +310,30 @@ pub fn segundo_passo(
         }
     }
 
-    let mut final_obj = format!(
-        "H{:<6}{:06X}{:06X}\n",
-        nome_programa,
+    let mut objeto_final = format!(
+        "H{nome_programa} {:06X}{:06X}\n",
         endereco_inicial,
         codigo_objeto.len() / 2
     );
+
     let mut cursor = 0;
-    let mut addr_t = endereco_inicial;
+    let mut endereco_registro = endereco_inicial;
 
     while cursor < codigo_objeto.len() {
-        // Pega no máximo 60 chars (30 bytes) por vez
-        let chunk_size = std::cmp::min(60, codigo_objeto.len() - cursor);
-        let chunk = &codigo_objeto[cursor..cursor + chunk_size];
+        // Pega no máximo 510 chars (255 bytes) por vez
+        let chunk_size = std::cmp::min(510, codigo_objeto.len() - cursor);
+        let chunk = codigo_objeto
+            .get(cursor..(cursor + chunk_size))
+            .unwrap_or_default();
 
-        final_obj.push_str(&format!(
-            "T{:06X}{:02X}{}\n",
-            addr_t,
-            chunk.len() / 2,
-            chunk
-        ));
+        objeto_final.push_str(
+            format!("T{:06X}{:02X}{chunk}\n", endereco_registro, chunk.len() / 2).as_str(),
+        );
 
-        addr_t += chunk.len() / 2;
+        endereco_registro += chunk.len() / 2;
         cursor += chunk_size;
     }
 
-    final_obj.push_str(&format!("E{:06X}", endereco_inicial));
-
-    Ok(final_obj)
+    objeto_final.push_str(format!("E{:06X}", endereco_inicial).as_str());
+    Ok(objeto_final)
 }
