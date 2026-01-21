@@ -1,6 +1,6 @@
 #[allow(clippy::module_inception)]
-mod montador;
-mod tabela_operacoes;
-mod tabela_registradores;
+pub mod montador; // Adicione 'pub' aqui
+pub mod tabela_operacoes; // Adicione 'pub' aqui
+pub mod tabela_registradores; // Adicione 'pub' aqui
 #[cfg(test)]
 mod tests;

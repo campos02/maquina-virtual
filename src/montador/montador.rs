@@ -1,9 +1,8 @@
 use crate::maquina::constantes::opcodes;
 use crate::montador::tabela_operacoes::{Operacao, TABELA_OPERACOES};
 use crate::montador::tabela_registradores::TABELA_REGISTRADORES;
-use anyhow::anyhow;
+use anyhow::{Context, anyhow};
 use std::collections::HashMap;
-use std::str::FromStr;
 
 pub fn primeiro_passo(assembly: &str) -> anyhow::Result<HashMap<&str, usize>> {
     // Pular linhas no começo que são só comentários
@@ -19,7 +18,7 @@ pub fn primeiro_passo(assembly: &str) -> anyhow::Result<HashMap<&str, usize>> {
             && operador == "START"
             && let Some(operando) = linha.next()
         {
-            contador_localizacao = operando.parse::<usize>().unwrap_or_default();
+            contador_localizacao = usize::from_str_radix(operando, 16).unwrap_or_default();
         }
     }
 
@@ -40,7 +39,7 @@ pub fn primeiro_passo(assembly: &str) -> anyhow::Result<HashMap<&str, usize>> {
 
         if let Some(operacao) = TABELA_OPERACOES.get(label) {
             operacao_linha = operacao;
-            operando = linha;
+            operando = linha.trim();
         } else {
             if tabela_simbolos.contains_key(label) {
                 return Err(anyhow!("Símbolo {} definido múltiplas vezes", label));
@@ -56,7 +55,7 @@ pub fn primeiro_passo(assembly: &str) -> anyhow::Result<HashMap<&str, usize>> {
             };
 
             operacao_linha = operacao;
-            operando = linha;
+            operando = linha.trim();
         }
 
         match operacao_linha {
@@ -145,7 +144,7 @@ pub fn segundo_passo(
 
         if let Some(operacao) = TABELA_OPERACOES.get(label) {
             operacao_linha = operacao;
-            operando = linha;
+            operando = linha.trim();
         } else {
             let Some((operacao, linha)) = linha.trim().split_once(char::is_whitespace) else {
                 continue;
@@ -156,7 +155,7 @@ pub fn segundo_passo(
             };
 
             operacao_linha = operacao;
-            operando = linha;
+            operando = linha.trim();
         }
 
         match operacao_linha {
@@ -167,15 +166,13 @@ pub fn segundo_passo(
                 {
                     let valor = valor.trim_matches('\'');
                     if tipo == "C" {
-                        let Ok(valor) = char::from_str(valor) else {
-                            return Err(anyhow!("Byte inválido: {}", valor));
-                        };
+                        for c in valor.chars() {
+                            if !c.is_ascii() {
+                                return Err(anyhow!("Caractere não ASCII: {}", c));
+                            }
 
-                        if !valor.is_ascii() {
-                            return Err(anyhow!("Caractere não ASCII: {}", valor));
-                        };
-
-                        codigo_objeto.push_str(format!("{:02X}", valor as u8).as_str());
+                            codigo_objeto.push_str(format!("{:02X}", c as u8).as_str());
+                        }
                     } else if tipo == "X" {
                         let Ok(valor) = u8::from_str_radix(valor, 16) else {
                             return Err(anyhow!("Byte inválido: {}", valor));
@@ -191,9 +188,10 @@ pub fn segundo_passo(
                     return Err(anyhow!("WORD inválida: {}", operando));
                 };
 
-                if word > 4095 {
+                // Limite de 24 bits
+                if word > 0xFFFFFF {
                     return Err(anyhow!("WORD inválida: {}", operando));
-                };
+                }
 
                 codigo_objeto.push_str(format!("{:06X}", word).as_str());
             }
@@ -207,7 +205,7 @@ pub fn segundo_passo(
                                 *r1
                             } else {
                                 let Ok(r1) = operando.parse::<u8>() else {
-                                    return Err(anyhow!("Registrador 1 inválido"));
+                                    return Err(anyhow!("Registrador 1 inválido: {}", operando));
                                 };
 
                                 if r1 > 9 {
@@ -217,20 +215,23 @@ pub fn segundo_passo(
                                 r1
                             };
 
-                            codigo_objeto.push_str(format!("{:X}00", r1).as_str());
+                            codigo_objeto.push_str(format!("{:X}0", r1).as_str());
                         }
 
                         _ => {
-                            let Some((r1, r2)) = operando.trim().split_once(',') else {
-                                return Err(anyhow!("Operando inválido"));
+                            let Some((r1, r2)) = operando.split_once(',') else {
+                                return Err(anyhow!("Operando inválido, esperado r1,r2"));
                             };
+
+                            let r1 = r1.trim();
+                            let r2 = r2.trim();
 
                             let r1 = if let Some(r1) = TABELA_REGISTRADORES.get(r1) {
                                 *r1
                             } else {
-                                let Ok(r1) = r1.parse::<u8>() else {
-                                    return Err(anyhow!("Registrador 1 inválido"));
-                                };
+                                let r1 = r1
+                                    .parse::<u8>()
+                                    .context(format!("Registrador 1 inválido: {}", r1))?;
 
                                 if r1 > 9 {
                                     return Err(anyhow!("Registrador 1 inválido"));
@@ -242,12 +243,12 @@ pub fn segundo_passo(
                             let r2 = if let Some(r2) = TABELA_REGISTRADORES.get(r2) {
                                 *r2
                             } else {
-                                let Ok(r2) = r2.parse::<u8>() else {
-                                    return Err(anyhow!("Registrador 2 inválido"));
-                                };
+                                let r2 = r2
+                                    .parse::<u8>()
+                                    .context(format!("Registrador 2 inválido: {}", r2))?;
 
                                 if r2 > 9 {
-                                    return Err(anyhow!("Registrador 2 inválido"));
+                                    return Err(anyhow!("Registrador 1 inválido"));
                                 }
 
                                 r2
@@ -257,7 +258,7 @@ pub fn segundo_passo(
                         }
                     }
                 } else {
-                    // Modos de endereçamento
+                    // Modos de endereçamento (Formatos 3 e 4)
                     let enderecamento: u8 = if operando.starts_with("#") {
                         operando = operando.trim_start_matches("#");
                         1
@@ -272,35 +273,29 @@ pub fn segundo_passo(
 
                     let mut flags_restantes = 0;
                     if *tamanho == 4 {
-                        flags_restantes |= 1;
+                        flags_restantes |= 1; // Flag e (extended)
                     }
 
                     if operando.ends_with(",X") {
-                        operando = operando.trim_end_matches(",X");
-                        flags_restantes |= 8;
+                        operando = operando.trim_end_matches(",X").trim(); // Trim aqui também!
+                        flags_restantes |= 8; // Flag x (indexado)
                     }
 
-                    let operando = if let Some(local) = tabela_simbolos.get(operando) {
-                        if *local > 4095 && *tamanho < 4 {
-                            return Err(anyhow!(
-                                "Operando com tamanho maior que o suportado pela instrução"
-                            ));
-                        }
-
+                    let operando = if operando.is_empty() {
+                        0
+                    } else if let Some(local) = tabela_simbolos.get(operando) {
                         *local
                     } else {
-                        let Ok(operando) = operando.parse::<usize>() else {
-                            return Err(anyhow!("Operando inválido"));
-                        };
-
-                        if operando > 4095 && *tamanho < 4 {
-                            return Err(anyhow!(
-                                "Operando com tamanho maior que o suportado pela instrução"
-                            ));
-                        }
-
-                        operando
+                        operando.parse::<usize>().context(format!(
+                            "Símbolo não encontrado ou número inválido: '{}'",
+                            operando
+                        ))?
                     };
+
+                    // Verifica tamanho e capacidade
+                    if operando > 4095 && *tamanho < 4 {
+                        return Err(anyhow!("Valor muito grande para formato 3: {}", operando));
+                    }
 
                     codigo_objeto.push_str(format!("{:X}", flags_restantes).as_str());
                     if *tamanho < 4 {
@@ -315,12 +310,30 @@ pub fn segundo_passo(
         }
     }
 
-    Ok(format!(
-        "H{nome_programa} {:06X}{:06X}\nT{:06X}{:02X}{codigo_objeto}\nE{:06X}",
+    let mut objeto_final = format!(
+        "H{nome_programa} {:06X}{:06X}\n",
         endereco_inicial,
-        assembly.len(),
-        endereco_inicial,
-        codigo_objeto.len(),
-        endereco_inicial
-    ))
+        codigo_objeto.len() / 2
+    );
+
+    let mut cursor = 0;
+    let mut endereco_registro = endereco_inicial;
+
+    while cursor < codigo_objeto.len() {
+        // Pega no máximo 510 chars (255 bytes) por vez
+        let chunk_size = std::cmp::min(510, codigo_objeto.len() - cursor);
+        let chunk = codigo_objeto
+            .get(cursor..(cursor + chunk_size))
+            .unwrap_or_default();
+
+        objeto_final.push_str(
+            format!("T{:06X}{:02X}{chunk}\n", endereco_registro, chunk.len() / 2).as_str(),
+        );
+
+        endereco_registro += chunk.len() / 2;
+        cursor += chunk_size;
+    }
+
+    objeto_final.push_str(format!("E{:06X}", endereco_inicial).as_str());
+    Ok(objeto_final)
 }
