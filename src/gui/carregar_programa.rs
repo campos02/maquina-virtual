@@ -3,6 +3,8 @@ use crate::montador::montador;
 use crate::processador_macros::macros;
 use anyhow::Context;
 use rfd::FileDialog;
+use std::fs::File;
+use std::io::Write;
 
 pub fn carregar_programa(maquina: &mut Maquina) -> anyhow::Result<()> {
     // 1. Abre a janela para selecionar o arquivo .asm
@@ -13,10 +15,10 @@ pub fn carregar_programa(maquina: &mut Maquina) -> anyhow::Result<()> {
         .context("Nenhum arquivo selecionado")?;
 
     let caminho_arquivo = arquivo.to_str().context("Caminho inválido")?;
+    let codigo_expandido = macros::processar(&std::fs::read_to_string(caminho_arquivo)?)?;
 
-    // 2. Chama o Processador de Macros (Etapa 3)
-    // Isso gera o arquivo MASMAPRG.ASM na pasta do seu projeto
-    macros::processar(caminho_arquivo)?;
+    let mut saida = File::create("MASMAPRG.ASM")?;
+    saida.write_all(codigo_expandido.as_bytes())?;
 
     // 3. Lê o arquivo expandido gerado pelas macros
     let conteudo_asm =

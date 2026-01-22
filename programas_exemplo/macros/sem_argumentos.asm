@@ -1,0 +1,17 @@
+MACROS START 0
+MACRO1 MACRO
+       CLEAR A
+       CLEAR X
+MACRO2 MACRO
+       CLEAR B
+       MEND
+       MEND
+
+MACRO3 MACRO
+       MACRO1
+       MEND
+
+    MACRO1
+    MACRO2
+    MACRO3
+    END
