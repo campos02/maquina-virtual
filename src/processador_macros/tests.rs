@@ -13,3 +13,11 @@ fn com_parametros() {
     let saida = include_str!("../../programas_exemplo/macros/saida_macro.asm");
     assert_eq!(processar(com_parametros).unwrap(), saida);
 }
+
+#[test]
+fn multiplas_definicoes() {
+    let multiplas_definicoes =
+        include_str!("../../programas_exemplo/macros/multiplas_definicoes.asm");
+    let saida = include_str!("../../programas_exemplo/macros/saida_multiplas_definicoes.asm");
+    assert_eq!(processar(multiplas_definicoes).unwrap(), saida);
+}

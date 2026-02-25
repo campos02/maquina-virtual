@@ -1,21 +1,26 @@
 use anyhow::anyhow;
+use std::cell::RefCell;
 use std::collections::HashMap;
 
 #[derive(Default, Clone)]
 struct DefinicaoMacro {
     corpo: String,
     parametros: Vec<String>,
+    // RefCell para poder alterar a quantidade de vezes sem ficar passando
+    // a tabela de forma mutável (o compilador não gostava)
+    vezes_expandido: RefCell<usize>,
 }
 
 pub fn processar(entrada: &str) -> anyhow::Result<String> {
     let mut tabela_definicoes = HashMap::new();
-    passo(entrada, &mut tabela_definicoes, None)
+    passo(entrada, &mut tabela_definicoes, None, None)
 }
 
 fn passo(
     entrada: &str,
     tabela_definicoes: &mut HashMap<String, DefinicaoMacro>,
     parametros: Option<Vec<(String, String)>>,
+    vezes_expandido: Option<usize>,
 ) -> anyhow::Result<String> {
     let mut nivel_aninhamento = 0;
     let mut definindo_macro = None;
@@ -100,6 +105,7 @@ fn passo(
 
                 definicao.corpo.push('\n');
             } else if let Some(definicao) = tabela_definicoes.get(label) {
+                *definicao.vezes_expandido.borrow_mut() += 1;
                 let parametros = if label_pulado {
                     conteudos.next()
                 } else {
@@ -132,27 +138,42 @@ fn passo(
                         .collect();
 
                     // Macros recursivos e expandir macros dentro de macros
+                    let vezes_expandido = Some(*definicao.vezes_expandido.borrow());
                     saida.push_str(&passo(
                         &definicao.corpo.clone(),
                         tabela_definicoes,
                         Some(parametros),
+                        vezes_expandido,
                     )?);
                 } else {
                     // Macros recursivos e expandir macros dentro de macros
-                    saida.push_str(&passo(&definicao.corpo.clone(), tabela_definicoes, None)?);
+                    let vezes_expandido = Some(*definicao.vezes_expandido.borrow());
+                    saida.push_str(&passo(
+                        &definicao.corpo.clone(),
+                        tabela_definicoes,
+                        None,
+                        vezes_expandido,
+                    )?);
                 }
             } else {
-                if let Some(parametros) = &parametros {
+                // Não mudar nada em comentários
+                if !linha.starts_with('.') && (parametros.is_some() || vezes_expandido.is_some()) {
                     let mut linha = linha.to_string();
-
-                    // Pular comentários
-                    if !linha.starts_with('.') {
+                    if let Some(parametros) = &parametros {
                         for (parametro, valor) in parametros {
                             linha = linha.replace(parametro, valor);
                         }
 
                         // Substituir operador de concatenação
                         linha = linha.replace("->", "");
+                    }
+
+                    if let Some(vezes_expandido) = vezes_expandido
+                        && let Some(label) = linha.split_whitespace().next()
+                        && let Some(label_stripped) = label.strip_prefix("$")
+                    {
+                        linha =
+                            linha.replace(label, &format!("{label_stripped}_{vezes_expandido}"));
                     }
 
                     saida.push_str(&linha);
