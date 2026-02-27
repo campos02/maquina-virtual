@@ -5,15 +5,15 @@ use anyhow::{Context, anyhow};
 use std::collections::HashMap;
 
 #[derive(PartialEq)]
-pub enum TipoSimbolo {
+enum TipoSimbolo {
     Local,
     Definido,
     Referenciado,
 }
 
-pub struct Simbolo {
-    pub localizacao: Option<usize>,
-    pub tipo: TipoSimbolo,
+struct Simbolo {
+    localizacao: Option<usize>,
+    tipo: TipoSimbolo,
 }
 
 struct Modificacao<'a> {
@@ -22,7 +22,51 @@ struct Modificacao<'a> {
     subtraindo: bool,
 }
 
-pub fn primeiro_passo(assembly: &str) -> anyhow::Result<HashMap<&str, Simbolo>> {
+pub fn montar(assembly: &str) -> anyhow::Result<String> {
+    let mut secoes = Vec::with_capacity(1);
+    secoes.push(String::new());
+
+    // Pular linhas no começo que são só comentários
+    let linhas = assembly
+        .split_inclusive('\n')
+        .skip_while(|l| l.trim().starts_with("."));
+
+    // Dividir seções de controle
+    for linha in linhas {
+        let mut conteudo = linha.split_whitespace();
+        let label = conteudo.next();
+
+        if let Some(operador) = conteudo.next()
+            && operador == "CSECT"
+        {
+            secoes.push(String::new());
+        }
+
+        if let Some(label) = label
+            && label == "END"
+            && let Some(primeira) = secoes.first_mut()
+        {
+            primeira.push_str(linha);
+        } else if let Some(secao) = secoes.last_mut() {
+            secao.push_str(linha);
+        }
+    }
+
+    // Montar seções individualmente
+    let mut objeto_final = String::new();
+    for secao in secoes {
+        let simbolos = primeiro_passo(&secao)?;
+        let objeto = segundo_passo(&secao, &simbolos)?;
+
+        objeto_final.push_str(&objeto);
+        objeto_final.push('\n');
+        objeto_final.push('\n');
+    }
+
+    Ok(objeto_final)
+}
+
+fn primeiro_passo(assembly: &str) -> anyhow::Result<HashMap<&str, Simbolo>> {
     // Pular linhas no começo que são só comentários
     let mut linhas = assembly.lines().skip_while(|l| l.trim().starts_with("."));
     let mut contador_localizacao = 0;
@@ -153,7 +197,7 @@ pub fn primeiro_passo(assembly: &str) -> anyhow::Result<HashMap<&str, Simbolo>> 
     Ok(tabela_simbolos)
 }
 
-pub fn segundo_passo(
+fn segundo_passo(
     assembly: &str,
     tabela_simbolos: &HashMap<&str, Simbolo>,
 ) -> anyhow::Result<String> {

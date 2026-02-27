@@ -25,8 +25,7 @@ pub fn carregar_programa(maquina: &mut Maquina) -> anyhow::Result<()> {
         std::fs::read_to_string("MASMAPRG.ASM").context("Erro ao ler MASMAPRG.ASM")?;
 
     // 4. Roda o Montador (Etapa 2)
-    let tabela_simbolos = montador::primeiro_passo(&conteudo_asm)?;
-    let registro_objeto = montador::segundo_passo(&conteudo_asm, &tabela_simbolos)?;
+    let registro_objeto = montador::montar(&conteudo_asm)?;
 
     // 5. Converte a string do registro objeto (formato H T E) em bytes reais
     // Vamos focar no registro 'T' (Text) que contém o código
