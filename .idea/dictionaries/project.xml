@@ -3,8 +3,12 @@
     <words>
       <w>codigo</w>
       <w>compr</w>
+      <w>csect</w>
       <w>definicoes</w>
       <w>divr</w>
+      <w>erum</w>
+      <w>extdef</w>
+      <w>extref</w>
       <w>jsub</w>
       <w>ldch</w>
       <w>mulr</w>
@@ -15,11 +19,13 @@
       <w>resetar</w>
       <w>resw</w>
       <w>rsub</w>
+      <w>rzero</w>
       <w>shiftl</w>
       <w>shiftr</w>
       <w>stch</w>
       <w>subr</w>
       <w>tixr</w>
+      <w>zeroe</w>
     </words>
   </dictionary>
 </component>

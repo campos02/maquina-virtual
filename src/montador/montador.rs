@@ -4,7 +4,25 @@ use crate::montador::tabela_registradores::TABELA_REGISTRADORES;
 use anyhow::{Context, anyhow};
 use std::collections::HashMap;
 
-pub fn primeiro_passo(assembly: &str) -> anyhow::Result<HashMap<&str, usize>> {
+#[derive(PartialEq)]
+pub enum TipoSimbolo {
+    Local,
+    Definido,
+    Referenciado,
+}
+
+pub struct Simbolo {
+    pub localizacao: Option<usize>,
+    pub tipo: TipoSimbolo,
+}
+
+struct Modificacao<'a> {
+    localizacao: usize,
+    simbolo: &'a str,
+    subtraindo: bool,
+}
+
+pub fn primeiro_passo(assembly: &str) -> anyhow::Result<HashMap<&str, Simbolo>> {
     // Pular linhas no começo que são só comentários
     let mut linhas = assembly.lines().skip_while(|l| l.trim().starts_with("."));
     let mut contador_localizacao = 0;
@@ -22,7 +40,7 @@ pub fn primeiro_passo(assembly: &str) -> anyhow::Result<HashMap<&str, usize>> {
         }
     }
 
-    let mut tabela_simbolos = HashMap::new();
+    let mut tabela_simbolos: HashMap<&str, Simbolo> = HashMap::new();
     for linha in linhas {
         // Remover comentários
         let linha = linha
@@ -45,7 +63,18 @@ pub fn primeiro_passo(assembly: &str) -> anyhow::Result<HashMap<&str, usize>> {
                 return Err(anyhow!("Símbolo {} definido múltiplas vezes", label));
             }
 
-            tabela_simbolos.insert(label, contador_localizacao);
+            if let Some(simbolo) = tabela_simbolos.get_mut(label) {
+                simbolo.localizacao = Some(contador_localizacao);
+            } else {
+                tabela_simbolos.insert(
+                    label,
+                    Simbolo {
+                        localizacao: Some(contador_localizacao),
+                        tipo: TipoSimbolo::Local,
+                    },
+                );
+            }
+
             let Some((operacao, linha)) = linha.trim().split_once(char::is_whitespace) else {
                 continue;
             };
@@ -59,9 +88,6 @@ pub fn primeiro_passo(assembly: &str) -> anyhow::Result<HashMap<&str, usize>> {
         }
 
         match operacao_linha {
-            Operacao::Start => continue,
-            Operacao::End => break,
-
             Operacao::Byte => {
                 if let Some(tipo) = operando.get(..1)
                     && let Some(valor) = operando.get(1..)
@@ -87,9 +113,40 @@ pub fn primeiro_passo(assembly: &str) -> anyhow::Result<HashMap<&str, usize>> {
                 contador_localizacao += operando.parse::<usize>().unwrap_or_default();
             }
 
+            Operacao::ExternalDefinition => {
+                for simbolo in operando.split(',') {
+                    if let Some(simbolo) = tabela_simbolos.get_mut(simbolo) {
+                        simbolo.tipo = TipoSimbolo::Definido;
+                    } else {
+                        tabela_simbolos.insert(
+                            label,
+                            Simbolo {
+                                localizacao: None,
+                                tipo: TipoSimbolo::Definido,
+                            },
+                        );
+                    }
+                }
+            }
+
+            Operacao::ExternalReference => {
+                for simbolo in operando.split(',') {
+                    tabela_simbolos.insert(
+                        simbolo,
+                        Simbolo {
+                            localizacao: None,
+                            tipo: TipoSimbolo::Referenciado,
+                        },
+                    );
+                }
+            }
+
             Operacao::Instrucao { hex: _, tamanho } => {
                 contador_localizacao += tamanho;
             }
+
+            Operacao::End => break,
+            _ => continue,
         }
     }
 
@@ -98,13 +155,14 @@ pub fn primeiro_passo(assembly: &str) -> anyhow::Result<HashMap<&str, usize>> {
 
 pub fn segundo_passo(
     assembly: &str,
-    tabela_simbolos: &HashMap<&str, usize>,
+    tabela_simbolos: &HashMap<&str, Simbolo>,
 ) -> anyhow::Result<String> {
     // Pular linhas no começo que são só comentários
     let mut linhas = assembly.lines().skip_while(|l| l.trim().starts_with("."));
 
     let mut nome_programa = "";
     let mut endereco_inicial = 0;
+    let mut contador_localizacao = 0;
 
     if let Some(linha) = linhas.next() {
         let mut linha = linha.split_whitespace();
@@ -117,17 +175,18 @@ pub fn segundo_passo(
         }
 
         nome_programa = nome;
-
         if let Some(operador) = linha.next()
             && operador == "START"
             && let Some(operando) = linha.next()
         {
-            let operando = usize::from_str_radix(operando, 16).unwrap_or_default();
-            endereco_inicial = operando;
+            endereco_inicial = usize::from_str_radix(operando, 16).unwrap_or_default();
+            contador_localizacao = endereco_inicial;
         }
     }
 
     let mut codigo_objeto = String::from("");
+    let mut modificacoes = Vec::new();
+
     for linha in linhas {
         // Remover comentários
         let linha = linha
@@ -173,7 +232,10 @@ pub fn segundo_passo(
 
                             codigo_objeto.push_str(format!("{:02X}", c as u8).as_str());
                         }
+
+                        contador_localizacao += valor.len();
                     } else if tipo == "X" {
+                        contador_localizacao += valor.len().div_ceil(2);
                         let Ok(valor) = u8::from_str_radix(valor, 16) else {
                             return Err(anyhow!("Byte inválido: {}", valor));
                         };
@@ -194,6 +256,15 @@ pub fn segundo_passo(
                 }
 
                 codigo_objeto.push_str(format!("{:06X}", word).as_str());
+                contador_localizacao += 3;
+            }
+
+            Operacao::ReserveWord => {
+                contador_localizacao += 3 * operando.parse::<usize>().unwrap_or_default();
+            }
+
+            Operacao::ReserveBytes => {
+                contador_localizacao += operando.parse::<usize>().unwrap_or_default();
             }
 
             Operacao::Instrucao { hex, tamanho } => {
@@ -284,7 +355,21 @@ pub fn segundo_passo(
                     let operando = if operando.is_empty() {
                         0
                     } else if let Some(local) = tabela_simbolos.get(operando) {
-                        *local
+                        if local.tipo == TipoSimbolo::Referenciado {
+                            if *tamanho == 3 {
+                                return Err(anyhow!(
+                                    "Não é possível utilizar símbolos definidos externamente no formato 3: {operando}"
+                                ));
+                            }
+
+                            modificacoes.push(Modificacao {
+                                localizacao: contador_localizacao + 1, // Pular opcode
+                                simbolo: operando,
+                                subtraindo: operando.starts_with("-"),
+                            });
+                        }
+
+                        local.localizacao.unwrap_or_default()
                     } else {
                         operando.parse::<usize>().context(format!(
                             "Símbolo não encontrado ou número inválido: '{}'",
@@ -304,6 +389,8 @@ pub fn segundo_passo(
                         codigo_objeto.push_str(format!("{:05X}", operando).as_str());
                     }
                 }
+
+                contador_localizacao += tamanho;
             }
 
             _ => continue,
@@ -315,6 +402,36 @@ pub fn segundo_passo(
         endereco_inicial,
         codigo_objeto.len() / 2
     );
+
+    let mut definidos = tabela_simbolos
+        .iter()
+        .filter(|(_, simbolo)| simbolo.tipo == TipoSimbolo::Definido)
+        .peekable();
+
+    if definidos.peek().is_some() {
+        objeto_final.push_str("D");
+        for (nome, simbolo) in definidos {
+            objeto_final.push_str(
+                format!("{:6}{:06X}", nome, simbolo.localizacao.unwrap_or_default()).as_str(),
+            );
+        }
+
+        objeto_final.push_str("\n");
+    }
+
+    let mut referenciados = tabela_simbolos
+        .iter()
+        .filter(|(_, simbolo)| simbolo.tipo == TipoSimbolo::Referenciado)
+        .peekable();
+
+    if referenciados.peek().is_some() {
+        objeto_final.push_str("R");
+        for (nome, _) in referenciados {
+            objeto_final.push_str(format!("{:6}", nome).as_str());
+        }
+
+        objeto_final.push_str("\n");
+    }
 
     let mut cursor = 0;
     let mut endereco_registro = endereco_inicial;
@@ -332,6 +449,19 @@ pub fn segundo_passo(
 
         endereco_registro += chunk.len() / 2;
         cursor += chunk_size;
+    }
+
+    for modificacao in modificacoes {
+        objeto_final.push_str(
+            format!(
+                "M{:06X}{:02X}{}{}\n",
+                modificacao.localizacao,
+                modificacao.simbolo.len(),
+                if modificacao.subtraindo { "-" } else { "+" },
+                modificacao.simbolo
+            )
+            .as_str(),
+        );
     }
 
     objeto_final.push_str(format!("E{:06X}", endereco_inicial).as_str());

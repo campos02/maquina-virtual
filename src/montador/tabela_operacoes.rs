@@ -8,6 +8,9 @@ pub enum Operacao {
     Word,
     ReserveWord,
     ReserveBytes,
+    ControlSection,
+    ExternalDefinition,
+    ExternalReference,
     Instrucao { hex: u8, tamanho: usize },
 }
 
@@ -18,6 +21,9 @@ pub static TABELA_OPERACOES: phf::Map<&'static str, Operacao> = phf_map! {
     "WORD" => Operacao::Word,
     "RESW" => Operacao::ReserveWord,
     "RESB" => Operacao::ReserveBytes,
+    "CSECT" => Operacao::ControlSection,
+    "EXTDEF" => Operacao::ExternalDefinition,
+    "EXTREF" => Operacao::ExternalReference,
 
     "ADD" => Operacao::Instrucao {
         hex: opcodes::ADD,
