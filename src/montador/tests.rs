@@ -41,25 +41,12 @@ fn montar_secoes() {
     let secoes = include_str!("../../programas_teste/secoes.asm");
     let saida = montar(secoes).unwrap();
 
-    assert!(
-        saida
-            == "HT_ADD 00000000000E\n\
-        RZERO  UM    \n\
-        T0000000E1B1000001B1000000F100000B400\n\
-        M00000102+UM\n\
-        M00000502+UM\n\
-        M00000904+ZERO\n\
-        E000000\n\n\
-        HTESTE 000000000002\n\
-        T00000002B400\n\
-        E000000\n\n"
-            || saida
-                == "HT_ADD 00000000000E\n\
-        RUM    ZERO  \n\
-        T0000000E1B1000001B1000000F100000B400\n\
-        M00000102+UM\n\
-        M00000502+UM\n\
-        M00000904+ZERO\n\
+    assert_eq!(
+        saida,
+        "HT_ADD 000000000007\n\
+        RTESTE \n\
+        T000000071B100000190001\n\
+        M00000105+TESTE\n\
         E000000\n\n\
         HTESTE 000000000002\n\
         T00000002B400\n\

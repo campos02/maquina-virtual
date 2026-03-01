@@ -1,157 +1,154 @@
+use anyhow::anyhow;
 use std::collections::HashMap;
-use anyhow::{Result, anyhow};
+use std::str::from_utf8;
 
-pub fn ligar_objetos(
-    objetos: Vec<String>,
-    endereco_carga: usize,
-    relocar_agora: bool,
-) -> Result<String> {
-
-    let tabela_global = primeira_passagem(&objetos, endereco_carga)?;
-    let resultado = segunda_passagem(
-        &objetos,
-        &tabela_global,
-        endereco_carga,
-        relocar_agora,
-    )?;
-
-    Ok(resultado)
+pub fn ligar_objeto(codigo_objeto: &str) -> anyhow::Result<String> {
+    let tabela = primeira_passagem(codigo_objeto)?;
+    segunda_passagem(codigo_objeto, tabela)
 }
 
+fn primeira_passagem(codigo_objeto: &str) -> anyhow::Result<HashMap<&str, usize>> {
+    let mut localizacao_inicial = 0;
+    let mut tamanho_secao_atual = 0;
+    let mut tabela_simbolos = HashMap::new();
 
-/// PRIMEIRA PASSAGEM
+    for linha in codigo_objeto.lines() {
+        match linha.chars().next() {
+            Some('H') => {
+                if let Some(nome) = linha.get(1..7)
+                    && let Some(tamanho) = linha.get(13..19)
+                {
+                    let nome = nome.trim();
+                    tamanho_secao_atual = usize::from_str_radix(tamanho, 16)?;
 
-fn primeira_passagem(
-    objetos: &Vec<String>,
-    endereco_carga: usize,
-) -> Result<HashMap<String, usize>> {
-
-    let mut tabela_global = HashMap::new();
-    let mut endereco_base = endereco_carga;
-
-    for obj in objetos {
-        let mut tamanho_modulo = 0;
-        let mut nome_modulo = String::new();
-
-        for linha in obj.lines() {
-
-            if linha.starts_with('H') {
-                // Exemplo: HMOD1 00000000000E
-                nome_modulo = linha[1..7].trim().to_string();
-                let tamanho_hex = &linha[13..19];
-                tamanho_modulo = usize::from_str_radix(tamanho_hex, 16)?;
-            }
-
-            if linha.starts_with('D') {
-                // Exemplo: DUM    000003ZERO  000010
-                let mut i = 1;
-                while i + 12 <= linha.len() {
-                    let simbolo = linha[i..i+6].trim().to_string();
-                    let endereco_hex = &linha[i+6..i+12];
-
-                    if !simbolo.is_empty() {
-                        let endereco_rel = usize::from_str_radix(endereco_hex, 16)?;
-                        let endereco_abs = endereco_base + endereco_rel;
-
-                        if tabela_global.contains_key(&simbolo) {
-                            return Err(anyhow!("Símbolo duplicado: {}", simbolo));
-                        }
-
-                        tabela_global.insert(simbolo, endereco_abs);
+                    if !tabela_simbolos.contains_key(nome) {
+                        tabela_simbolos.insert(nome, localizacao_inicial);
+                    } else {
+                        return Err(anyhow!("Símbolo {nome} definido múltiplas vezes"));
                     }
-
-                    i += 12;
                 }
             }
-        }
 
-        endereco_base += tamanho_modulo;
+            Some('D') => {
+                if let Some(linha) = linha.strip_prefix("D") {
+                    let mut chunks = linha.as_bytes().chunks(12);
+
+                    while let Some(chunk) = chunks.next()
+                        && let Ok(chunk) = from_utf8(chunk)
+                        && let Some((simbolo, localizacao)) = chunk.split_at_checked(6)
+                    {
+                        let simbolo = simbolo.trim();
+                        let localizacao = localizacao.trim();
+
+                        if !tabela_simbolos.contains_key(simbolo) {
+                            let localizacao =
+                                localizacao_inicial + usize::from_str_radix(localizacao, 16)?;
+
+                            tabela_simbolos.insert(simbolo, localizacao);
+                        } else {
+                            return Err(anyhow!("Símbolo {simbolo} definido múltiplas vezes"));
+                        }
+                    }
+                }
+            }
+
+            Some('E') => {
+                localizacao_inicial += tamanho_secao_atual;
+            }
+
+            _ => (),
+        }
     }
 
-    Ok(tabela_global)
+    Ok(tabela_simbolos)
 }
-
-
-/// SEGUNDA PASSAGEM
-
 
 fn segunda_passagem(
-    objetos: &Vec<String>,
-    tabela_global: &HashMap<String, usize>,
-    endereco_carga: usize,
-    relocar_agora: bool,
-) -> Result<String> {
+    codigo_objeto: &str,
+    tabela_simbolos: HashMap<&str, usize>,
+) -> anyhow::Result<String> {
+    let mut localizacao_inicial = 0;
+    let mut tamanho_secao_atual = 0;
+    let mut nome_atual = "";
+    let mut programa = String::new();
+    let mut referencias_atuais = Vec::new();
 
-    let mut resultado = String::new();
-    let mut endereco_base = endereco_carga;
-
-    for obj in objetos {
-
-        let mut tamanho_modulo = 0;
-
-        for linha in obj.lines() {
-
-            if linha.starts_with('H') {
-                let tamanho_hex = &linha[13..19];
-                tamanho_modulo = usize::from_str_radix(tamanho_hex, 16)?;
+    for linha in codigo_objeto.lines() {
+        match linha.chars().next() {
+            Some('H') => {
+                if let Some(nome) = linha.get(1..7)
+                    && let Some(tamanho) = linha.get(13..19)
+                {
+                    let nome = nome.trim();
+                    tamanho_secao_atual = usize::from_str_radix(tamanho, 16)?;
+                    nome_atual = nome;
+                    referencias_atuais.clear();
+                }
             }
 
-            if linha.starts_with('T') {
-                let endereco_hex = &linha[1..7];
-                let resto = &linha[7..];
+            Some('R') => {
+                if let Some(linha) = linha.strip_prefix("R") {
+                    let mut chunks = linha.as_bytes().chunks(6);
 
-                let endereco_rel = usize::from_str_radix(endereco_hex, 16)?;
-
-                let endereco_final = if relocar_agora {
-                    endereco_base + endereco_rel
-                } else {
-                    endereco_rel
-                };
-
-                resultado.push_str(
-                    &format!("T{:06X}{}\n", endereco_final, resto)
-                );
-            }
-
-            if linha.starts_with('M') {
-                // Exemplo: M00000102+UM
-                let endereco_rel = usize::from_str_radix(&linha[1..7], 16)?;
-                let tamanho = &linha[7..9];
-                let operacao = &linha[9..10];
-                let simbolo = &linha[10..];
-
-                let endereco_final = if relocar_agora {
-                    endereco_base + endereco_rel
-                } else {
-                    endereco_rel
-                };
-
-                if let Some(valor_simbolo) = tabela_global.get(simbolo.trim()) {
-
-                    if relocar_agora {
-                        // Aqui seria o ponto onde você alteraria o código já gerado
-                        // (implementação completa depende do formato do seu T)
+                    while let Some(chunk) = chunks.next()
+                        && let Ok(simbolo) = from_utf8(chunk)
+                    {
+                        let simbolo = simbolo.trim();
+                        referencias_atuais.push(simbolo);
                     }
-
-                } else {
-                    return Err(anyhow!("Símbolo indefinido: {}", simbolo));
-                }
-
-                // Se for apenas ligador (não relocador), repassa M
-                if !relocar_agora {
-                    resultado.push_str(&format!(
-                        "M{:06X}{}{}{}\n",
-                        endereco_final,
-                        tamanho,
-                        operacao,
-                        simbolo
-                    ));
                 }
             }
-        }
 
-        endereco_base += tamanho_modulo;
+            Some('T') => {
+                if let Some(texto) = linha.get(9..) {
+                    programa.push_str(texto);
+                }
+            }
+
+            Some('M') => {
+                if let Some(localizacao) = linha.get(1..7)
+                    && let Ok(localizacao) = usize::from_str_radix(localizacao.trim(), 16)
+                    && let Some(tamanho) = linha.get(7..9)
+                    && let Ok(tamanho) = tamanho.parse::<usize>()
+                    && let Some(simbolo) = linha.get(9..)
+                {
+                    let simbolo = simbolo.trim();
+                    let (operacao, simbolo) = simbolo.split_at(1);
+
+                    if referencias_atuais.contains(&simbolo)
+                        && let Some(localizacao_simbolo) = tabela_simbolos.get(simbolo)
+                    {
+                        let localizacao = localizacao_inicial + localizacao;
+                        if let Some(bytes) = programa.get(localizacao..localizacao + tamanho)
+                            && let Ok(bytes) = usize::from_str_radix(bytes, 16)
+                        {
+                            programa.replace_range(
+                                localizacao..localizacao + tamanho,
+                                &format!(
+                                    "{:X}",
+                                    &(if operacao == "-" {
+                                        bytes - localizacao_simbolo
+                                    } else {
+                                        bytes + localizacao_simbolo
+                                    })
+                                ),
+                            );
+                        }
+                    } else {
+                        return Err(anyhow!(
+                            "Referência {simbolo} não encontrada na seção {nome_atual}"
+                        ));
+                    }
+                }
+            }
+
+            Some('E') => {
+                localizacao_inicial += tamanho_secao_atual;
+            }
+
+            _ => (),
+        }
     }
 
-    Ok(resultado)
+    Ok(programa)
 }

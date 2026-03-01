@@ -1,11 +1,9 @@
 . Programa teste do montador
 T_ADD   START 0
-EXTREF UM,ZERO
+EXTREF TESTE
 
-INICIO      +ADD UM
-            +ADD UM
-STORE       +STA ZERO
-            CLEAR A
+INICIO      +ADD TESTE
+            ADD #1
 
 TESTE       CSECT
             CLEAR A

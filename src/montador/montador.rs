@@ -442,7 +442,8 @@ fn segundo_passo(
     }
 
     let mut objeto_final = format!(
-        "H{nome_programa} {:06X}{:06X}\n",
+        "H{:6}{:06X}{:06X}\n",
+        nome_programa,
         endereco_inicial,
         codigo_objeto.len() / 2
     );

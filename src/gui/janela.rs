@@ -20,12 +20,6 @@ impl Default for Janela {
     }
 }
 
-impl Janela {
-    fn ligar_programas(&mut self) -> anyhow::Result<()> {
-        Ok(())
-    }
-}
-
 impl eframe::App for Janela {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if self.executando {
@@ -50,15 +44,6 @@ impl eframe::App for Janela {
                     } else {
                         self.erro = None;
                         self.status = "Programa carregado com sucesso.".to_string();
-                    }
-                }
-                
-                if ui.button("🔗 Ligar Programas").clicked() {
-                    if let Err(error) = self.ligar_programas() {
-                        self.erro = Some(error.to_string());
-                    } else {
-                        self.erro = None;
-                        self.status = "Programas ligados e carregados.".to_string();
                     }
                 }
 

@@ -1,4 +1,5 @@
 mod gui;
+mod ligador;
 mod maquina;
 mod montador;
 mod processador_macros;
