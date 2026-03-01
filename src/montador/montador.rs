@@ -454,14 +454,14 @@ fn segundo_passo(
         .peekable();
 
     if definidos.peek().is_some() {
-        objeto_final.push_str("D");
+        objeto_final.push('D');
         for (nome, simbolo) in definidos {
             objeto_final.push_str(
                 format!("{:6}{:06X}", nome, simbolo.localizacao.unwrap_or_default()).as_str(),
             );
         }
 
-        objeto_final.push_str("\n");
+        objeto_final.push('\n');
     }
 
     let mut referenciados = tabela_simbolos
@@ -470,12 +470,12 @@ fn segundo_passo(
         .peekable();
 
     if referenciados.peek().is_some() {
-        objeto_final.push_str("R");
+        objeto_final.push('R');
         for (nome, _) in referenciados {
             objeto_final.push_str(format!("{:6}", nome).as_str());
         }
 
-        objeto_final.push_str("\n");
+        objeto_final.push('\n');
     }
 
     let mut cursor = 0;
