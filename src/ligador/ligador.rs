@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use std::collections::HashMap;
 use std::str::from_utf8;
 
-pub fn ligar_objeto(codigo_objeto: &str) -> anyhow::Result<String> {
+pub fn ligar_objeto(codigo_objeto: &str) -> anyhow::Result<(String, usize)> {
     let tabela = primeira_passagem(codigo_objeto)?;
     segunda_passagem(codigo_objeto, tabela)
 }
@@ -66,14 +66,16 @@ fn primeira_passagem(codigo_objeto: &str) -> anyhow::Result<HashMap<&str, usize>
 fn segunda_passagem(
     codigo_objeto: &str,
     tabela_simbolos: HashMap<&str, usize>,
-) -> anyhow::Result<String> {
+) -> anyhow::Result<(String, usize)> {
     let mut localizacao_inicial = 0;
     let mut tamanho_secao_atual = 0;
     let mut nome_atual = "";
     let mut programa = String::new();
     let mut referencias_atuais = Vec::new();
+    let mut inicio_programa = 0;
 
-    for linha in codigo_objeto.lines() {
+    let linhas = codigo_objeto.lines().peekable();
+    for linha in linhas {
         match linha.chars().next() {
             Some('H') => {
                 if let Some(nome) = linha.get(1..7)
@@ -144,11 +146,16 @@ fn segunda_passagem(
 
             Some('E') => {
                 localizacao_inicial += tamanho_secao_atual;
+                if let Some(inicio) = linha.get(1..7)
+                    && let Ok(inicio) = usize::from_str_radix(inicio, 16)
+                {
+                    inicio_programa = inicio;
+                }
             }
 
             _ => (),
         }
     }
 
-    Ok(programa)
+    Ok((programa, inicio_programa))
 }

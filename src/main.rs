@@ -1,3 +1,4 @@
+pub mod carregador;
 mod gui;
 mod ligador;
 mod maquina;

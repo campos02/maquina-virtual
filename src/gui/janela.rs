@@ -7,6 +7,7 @@ pub struct Janela {
     erro: Option<String>,
     status: String,
     executando: bool,
+    endereco_inicial: usize,
 }
 
 impl Default for Janela {
@@ -16,6 +17,7 @@ impl Default for Janela {
             erro: None,
             status: "✅ Sistema pronto.".to_string(),
             executando: false,
+            endereco_inicial: 0,
         }
     }
 }
@@ -39,11 +41,18 @@ impl eframe::App for Janela {
                 ui.separator();
 
                 if ui.button("📂 Carregar programa").clicked() {
-                    if let Err(error) = carregar_programa(&mut self.maquina) {
-                        self.erro = Some(error.to_string());
-                    } else {
-                        self.erro = None;
-                        self.status = "Programa carregado com sucesso.".to_string();
+                    match carregar_programa(&mut self.maquina) {
+                        Ok(endereco_inicial) => {
+                            self.erro = None;
+                            self.status =
+                                format!("Programa carregado a partir do endereço {:X}.", endereco_inicial);
+
+                            self.endereco_inicial = endereco_inicial;
+                        }
+
+                        Err(erro) => {
+                            self.erro = Some(erro.to_string());
+                        }
                     }
                 }
 
@@ -102,24 +111,7 @@ impl eframe::App for Janela {
                 .auto_shrink(false)
                 .show(ui, |ui| {
                     ui.vertical(|ui| {
-                        for addr in (0x0000..0x0060).step_by(8) {
-                            let slice = &memoria[addr..addr + 8];
-                            ui.monospace(format!(
-                                "{:04X}: {:02X} {:02X} {:02X} {:02X}  {:02X} {:02X} {:02X} {:02X}",
-                                addr,
-                                slice[0],
-                                slice[1],
-                                slice[2],
-                                slice[3],
-                                slice[4],
-                                slice[5],
-                                slice[6],
-                                slice[7]
-                            ));
-                        }
-
-                        ui.separator();
-                        for addr in (0x6000..0x6060).step_by(8) {
+                        for addr in (0..memoria.len()).step_by(8) {
                             let slice = &memoria[addr..addr + 8];
                             ui.monospace(format!(
                                 "{:04X}: {:02X} {:02X} {:02X} {:02X}  {:02X} {:02X} {:02X} {:02X}",

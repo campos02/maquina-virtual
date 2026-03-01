@@ -4,7 +4,7 @@ use crate::maquina::maquina::Maquina;
 #[test]
 fn add_imediato() {
     let mut maquina = Maquina::new();
-    maquina.carregar(&[0x19, 0x00, 0x01]).unwrap();
+    maquina.carregar(&[0x19, 0x00, 0x01], 0).unwrap();
     maquina.executar_instrucao().unwrap();
     assert_eq!(maquina.registrador(registradores::A), Some(1));
 }
@@ -12,11 +12,11 @@ fn add_imediato() {
 #[test]
 fn clear() {
     let mut maquina = Maquina::new();
-    maquina.carregar(&[0x19, 0x00, 0x01]).unwrap();
+    maquina.carregar(&[0x19, 0x00, 0x01], 0).unwrap();
     maquina.executar_instrucao().unwrap();
     assert_eq!(maquina.registrador(registradores::A), Some(1));
 
-    maquina.carregar(&[0x04, 0x00, 0x00]).unwrap();
+    maquina.carregar(&[0x04, 0x00, 0x00], 0).unwrap();
     maquina.executar_instrucao().unwrap();
     assert_eq!(maquina.registrador(registradores::A), Some(0));
 }
@@ -25,7 +25,7 @@ fn clear() {
 fn programa_com_multiplas_instrucoes() {
     let mut maquina = Maquina::new();
     maquina
-        .carregar(&[0x19, 0x00, 0x01, 0x19, 0x00, 0x01, 0x19, 0x00, 0x01])
+        .carregar(&[0x19, 0x00, 0x01, 0x19, 0x00, 0x01, 0x19, 0x00, 0x01], 0)
         .unwrap();
 
     maquina.executar_instrucao().unwrap();
